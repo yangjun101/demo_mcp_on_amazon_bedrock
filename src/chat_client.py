@@ -45,7 +45,7 @@ class ChatClient:
         return bedrock_client
     
     async def process_query(self, query: str = "", 
-            model_id="amazon.nova-lite-v1:0", max_tokens=1024, temperature=0.1,max_turns=10,
+            model_id="amazon.nova-lite-v1:0", max_tokens=1024, temperature=0.1,max_turns=30,
             history=[], system=[], mcp_client=None, mcp_server_ids=[]) -> Dict:
         """Submit user query or history messages, and then get the response answer.
 
