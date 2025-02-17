@@ -1,4 +1,4 @@
-# Nova MCP on Amazon Bedrock [[中文说明](./README.md)]
+# MCP on Amazon Bedrock [[中文说明](./README.md)]
 
 > ChatBot is the most common application form in the large model era. However, limited by large models' inability to obtain real-time information and operate external systems, ChatBot application scenarios are relatively limited. Later, with the launch of Function Calling/Tool Use features, large models could interact with external systems, but the drawback was that the large model business logic and Tool development were tightly coupled, unable to leverage the efficiency of Tool-end scaling. In late November 2024, Anthropic launched [MCP](https://www.anthropic.com/news/model-context-protocol), breaking this situation by introducing community power to scale up on the Tool end. Currently, the open-source community and various vendors have developed rich [MCP servers](https://github.com/modelcontextprotocol/servers), making the Tool end flourish. End users can plug and play to integrate them into their ChatBots, greatly extending ChatBot UI capabilities, showing a trend of ChatBots unifying various system UIs.
 
