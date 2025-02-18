@@ -95,7 +95,7 @@ def process_stream_response(response):
                 except Exception as e:
                     logging.error(f"Error processing stream: {e}")
 
-def request_chat(messages, model_id, mcp_server_ids, stream=False, max_tokens=1024, temperature=0.1):
+def request_chat(messages, model_id, mcp_server_ids, stream=False, max_tokens=1024, temperature=0.5):
     url = mcp_base_url.rstrip('/') + '/v1/chat/completions'
     msg, msg_extras = 'something is wrong!', {}
     try:
@@ -276,7 +276,7 @@ with st.sidebar:
     max_tokens = st.number_input('上下文长度限制',
                                  min_value=64, max_value=8000, value=4000)
     temperature = st.number_input('temperature',
-                                 min_value=0.0, max_value=1.0, value=0.1, step=0.01)
+                                 min_value=0.0, max_value=1.0, value=0.5, step=0.1)
     system_prompt = st.text_area('系统提示词',
                                 value=st.session_state.system_prompt,
                                 height=100,
@@ -320,14 +320,12 @@ if prompt := st.chat_input():
                                          temperature = temperature)
         # Get streaming response
         if st.session_state.enable_stream:
-            thinking_content = ""  # 添加变量存储累积的thinking内容
-            thinking_expander = None  # 用于存储thinking的expander对象
             if isinstance(response, requests.Response):
                 # Process streaming response
                 tool_count = 1
                 content_block_idx = 0
-                thinking_content = ""
-                thinking_expander = None
+                thinking_content = ""  # 添加变量存储累积的thinking内容
+                thinking_expander = None  # 用于存储thinking的expander对象
                 for content in process_stream_response(response):
                     logging.info(f"content block idx:{content_block_idx}")
                     content_block_idx += 1
@@ -338,7 +336,7 @@ if prompt := st.chat_input():
                     thk_m = re.search(thk_regex, full_response, re.DOTALL)
                     if thk_m:
                         thk_msg = thk_m.group(1)
-                        full_response = re.sub(thk_regex, "", full_response)
+                        full_response = re.sub(thk_regex, "", full_response,flags=re.DOTALL)
                         # 如果有新的thinking内容，追加到现有内容中
                         if thk_msg != thinking_content:
                             thinking_content = thk_msg  # 更新thinking内容
