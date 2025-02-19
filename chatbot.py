@@ -71,7 +71,7 @@ def request_add_mcp_server( server_id, server_name, command, args=[], env={},con
 def process_stream_response(response):
     """Process streaming response and yield content chunks"""
     for line in response.iter_lines():
-        logging.info(f"line:{line}")
+        # logging.info(f"line:{line}")
         if line:
             line = line.decode('utf-8')
             if line.startswith('data: '):
@@ -95,7 +95,7 @@ def process_stream_response(response):
                 except Exception as e:
                     logging.error(f"Error processing stream: {e}")
 
-def request_chat(messages, model_id, mcp_server_ids, stream=False, max_tokens=1024, temperature=0.5):
+def request_chat(messages, model_id, mcp_server_ids, stream=False, max_tokens=1024, temperature=0.6):
     url = mcp_base_url.rstrip('/') + '/v1/chat/completions'
     msg, msg_extras = 'something is wrong!', {}
     try:
@@ -276,7 +276,7 @@ with st.sidebar:
     max_tokens = st.number_input('上下文长度限制',
                                  min_value=64, max_value=8000, value=4000)
     temperature = st.number_input('temperature',
-                                 min_value=0.0, max_value=1.0, value=0.5, step=0.1)
+                                 min_value=0.0, max_value=1.0, value=0.6, step=0.1)
     system_prompt = st.text_area('系统提示词',
                                 value=st.session_state.system_prompt,
                                 height=100,

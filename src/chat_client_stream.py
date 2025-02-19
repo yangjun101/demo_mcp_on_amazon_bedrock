@@ -99,7 +99,7 @@ class ChatClientStream(ChatClient):
                 # 收集所有需要调用的工具请求
                 tool_calls = []
                 async for event in self._process_stream_response(response):
-                    logger.info(event)
+                    # logger.info(event)
                     # continue
                     yield event
                     # Handle tool use in content block start
