@@ -136,7 +136,7 @@ class MCPClient:
         """Get llm's tool usage config via MCP server"""
         # list tools via mcp server
         responses = [(server_id, await self.sessions[server_id].list_tools()) 
-                     for server_id in self.sessions if not server_ids or server_id in server_ids]
+                     for server_id in self.sessions if server_id in server_ids]
 
         if not responses:
             return None
