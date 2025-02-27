@@ -95,7 +95,7 @@ def process_stream_response(response):
                 except Exception as e:
                     logging.error(f"Error processing stream: {e}")
 
-def request_chat(messages, model_id, mcp_server_ids, stream=False, max_tokens=1024, temperature=0.6):
+def request_chat(messages, model_id, mcp_server_ids, stream=False,max_tokens=1024, temperature=0.6,extra_params = {}):
     url = mcp_base_url.rstrip('/') + '/v1/chat/completions'
     msg, msg_extras = 'something is wrong!', {}
     try:
@@ -103,9 +103,10 @@ def request_chat(messages, model_id, mcp_server_ids, stream=False, max_tokens=10
             'messages': messages,
             'model': model_id,
             'mcp_server_ids': mcp_server_ids,
-            'max_tokens': max_tokens,
+            'extra_params': extra_params,
             'stream': stream ,
-            'temperature':temperature
+            'temperature':temperature,
+            'max_tokens':max_tokens
         }
         logging.info('request payload: %s' % payload)
         if stream:
@@ -149,7 +150,7 @@ for x in request_list_mcp_servers():
     st.session_state.mcp_servers[x['server_name']] = x['server_id']
 
 if "system_prompt" not in st.session_state:
-    st.session_state.system_prompt = "You are a helpful AI assistant."
+    st.session_state.system_prompt = ""
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -158,7 +159,23 @@ if "messages" not in st.session_state:
 
 if "enable_stream" not in st.session_state:
     st.session_state.enable_stream = True
+    
+if "enable_thinking" not in st.session_state:
+    st.session_state.enable_thinking = False
 
+# Function to clear conversation history
+def clear_conversation():
+    st.session_state.messages = [
+        {"role": "system", "content": st.session_state.system_prompt},
+    ]
+    st.session_state.should_rerun = True
+
+# Check if we need to rerun the app
+if "should_rerun" not in st.session_state:
+    st.session_state.should_rerun = False
+if st.session_state.should_rerun:
+    st.session_state.should_rerun = False
+    st.rerun()
 
 # add new mcp UI and handle
 def add_new_mcp_server_handle():
@@ -271,23 +288,30 @@ def add_new_mcp_server():
 
 # UI
 with st.sidebar:
-    llm_model_name = st.selectbox('Bedrock模型',
+    llm_model_name = st.selectbox('Model List',
                                   list(st.session_state.model_names.keys()))
-    max_tokens = st.number_input('上下文长度限制',
-                                 min_value=64, max_value=8000, value=4000)
-    temperature = st.number_input('temperature',
+    max_tokens = st.number_input('Max output token',
+                                 min_value=1, max_value=64000, value=4000)
+    budget_tokens = st.number_input('Max thinking token',
+                                 min_value=1024, max_value=128000, value=8192,step=1024)
+    temperature = st.number_input('Temperature',
                                  min_value=0.0, max_value=1.0, value=0.6, step=0.1)
-    system_prompt = st.text_area('系统提示词',
+    system_prompt = st.text_area('System',
                                 value=st.session_state.system_prompt,
                                 height=100,
-                                help="系统提示词")
+                                )
+    st.session_state.enable_thinking = st.toggle('Thinking', value=False)
+
     st.session_state.system_prompt = system_prompt
-    st.session_state.enable_stream = st.toggle('流式输出', value=True)
+    st.session_state.enable_stream = st.toggle('Stream', value=True)
     with st.expander(label='已有 MCP Servers', expanded=False):
         for i, server_name in enumerate(st.session_state.mcp_servers):
-            st.checkbox(label=server_name, value=True, key=f'mcp_server_{server_name}')
+            st.checkbox(label=server_name, value=False, key=f'mcp_server_{server_name}')
     st.button("添加 MCP Server", 
               on_click=add_new_mcp_server)
+    
+    with st.container():
+        st.button("🗑️ 清空上下文", on_click=clear_conversation, key="clear_button")
 
 st.title("💬 Bedrock Chatbot with MCP")
 
@@ -295,11 +319,11 @@ st.title("💬 Bedrock Chatbot with MCP")
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
 
+
 # Handle user input
 if prompt := st.chat_input():
     # 更新system message
     st.session_state.messages[0] = {"role": "system", "content": st.session_state.system_prompt}
-    
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
@@ -315,9 +339,11 @@ if prompt := st.chat_input():
         response_placeholder = st.empty()
         full_response = ""
         response, msg_extras = request_chat(st.session_state.messages, model_id, 
-                        mcp_server_ids, stream=st.session_state.enable_stream,
-                                         max_tokens=max_tokens,
-                                         temperature = temperature)
+                        mcp_server_ids, stream=st.session_state.enable_stream, max_tokens=max_tokens, temperature=temperature, extra_params={
+                            "budget_tokens":budget_tokens,
+                            "enable_thinking":st.session_state.enable_thinking
+                        }
+                    )
         # Get streaming response
         if st.session_state.enable_stream:
             if isinstance(response, requests.Response):

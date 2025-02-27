@@ -16,6 +16,7 @@ from chat_client import ChatClient
 
 load_dotenv()  # load environment variables from .env
 logger = logging.getLogger(__name__)
+CLAUDE_37_SONNET_MODEL_ID = 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'
 
 class ChatClientStream(ChatClient):
     """Extended ChatClient with streaming support"""
@@ -23,6 +24,7 @@ class ChatClientStream(ChatClient):
     async def _process_stream_response(self, response) -> AsyncIterator[Dict]:
         """Process the raw response from converse_stream"""
         for event in response['stream']:
+            # logger.info(event)
             # Handle message start
             if "messageStart" in event:
                 yield {"type": "message_start", "data": event["messageStart"]}
@@ -57,7 +59,7 @@ class ChatClientStream(ChatClient):
 
     async def process_query_stream(self, query: str = "",
             model_id="amazon.nova-lite-v1:0", max_tokens=1024, max_turns=30,temperature=0.1,
-            history=[], system=[],mcp_client=None, mcp_server_ids=[]) -> AsyncGenerator[Dict, None]:
+            history=[], system=[],mcp_client=None, mcp_server_ids=[],extra_params={}) -> AsyncGenerator[Dict, None]:
         """Submit user query or history messages, and get streaming response.
         
         Similar to process_query but uses converse_stream API for streaming responses.
@@ -80,26 +82,43 @@ class ChatClientStream(ChatClient):
         current_tool_use = None
         current_tooluse_input = ''
         tool_results = []
-        text = ''
         stop_reason = ''
         turn_i = 1
 
-        while turn_i <= max_turns and stop_reason != 'end_turn':
-            # invoke bedrock llm with user query
-            try:
-                response = bedrock_client.converse_stream(
+        enable_thinking = extra_params.get('enable_thinking', False) and model_id in CLAUDE_37_SONNET_MODEL_ID
+        
+
+        if enable_thinking:
+            additionalModelRequestFields = {"reasoning_config": { "type": "enabled","budget_tokens": extra_params.get("budget_tokens",1024)}}
+            inferenceConfig={"maxTokens":max(extra_params.get("budget_tokens",1024) + 1, max_tokens),"temperature":1,}
+
+        else:
+            additionalModelRequestFields = {}
+            inferenceConfig={"maxTokens":max_tokens,"temperature":temperature,}
+
+        requestParams = dict(
                     modelId=model_id,
                     messages=messages,
                     system=system,
-                    toolConfig=tool_config if tool_config else None,
-                    inferenceConfig={"maxTokens":max_tokens,"temperature":temperature,}
-                    
+                    inferenceConfig=inferenceConfig,
+                    additionalModelRequestFields = additionalModelRequestFields
+        )
+        requestParams = {**requestParams, 'toolConfig': tool_config} if tool_config else requestParams
+
+        while turn_i <= max_turns and stop_reason != 'end_turn':
+            text = ''
+            thinking_text = ''
+            thinking_signature = ''
+            # invoke bedrock llm with user query
+            try:
+                response = bedrock_client.converse_stream(
+                    **requestParams
                 )
                 turn_i += 1
                 # 收集所有需要调用的工具请求
                 tool_calls = []
                 async for event in self._process_stream_response(response):
-                    # logger.info(event)
+                    logger.info(event)
                     # continue
                     yield event
                     # Handle tool use in content block start
@@ -121,6 +140,12 @@ class ChatClientStream(ChatClient):
                                 current_tool_use["input"] = current_tooluse_input 
                         if "text" in delta.get("delta", {}):
                             text += delta["delta"]["text"]
+                        if "reasoningContent" in delta.get("delta", {}):
+                            if 'signature' in delta["delta"]['reasoningContent']:
+                                thinking_signature = delta["delta"]['reasoningContent']['signature']
+                            if 'text' in delta["delta"]['reasoningContent']:
+                                thinking_text += delta["delta"]['reasoningContent']["text"]
+                            
 
                     # Handle tool use input in content block stop
                     if event["type"] == "block_stop":
@@ -172,11 +197,23 @@ class ChatClientStream(ChatClient):
                             event["data"]["tool_results"] = [item for pair in zip(tool_calls, tool_results) for item in pair]
                             yield event
                             #append assistant message   
+                            thinking_block = [{
+                                "reasoningContent": 
+                                    {
+                                        "reasoningText":  {
+                                            "text":thinking_text,
+                                            "signature":thinking_signature
+                                            }
+                                    }
+                            }]
+                            
                             tool_use_block = [{"toolUse":tool} for tool in tool_calls]
                             assistant_message = {
                                 "role": "assistant",
-                                "content": [{"text": text}] + tool_use_block
-                            }             
+                                "content":   thinking_block+ tool_use_block if thinking_signature else [{"text": text}] + tool_use_block if text else tool_use_block
+                            }     
+                            thinking_signature = ''
+                            thinking_text = ''
                             messages.append(assistant_message)
 
                             #append tooluse result
@@ -185,9 +222,7 @@ class ChatClientStream(ChatClient):
                             logger.info("Call new turn : %s" % messages)
                             # Start new stream with tool result
                             response = bedrock_client.converse_stream(
-                                modelId=model_id,   
-                                messages=messages,
-                                toolConfig=tool_config
+                               **requestParams
                             )
                             
                             # Reset tool state
@@ -196,8 +231,11 @@ class ChatClientStream(ChatClient):
                         # normal chat finished
                         elif stop_reason in ['end_turn','max_tokens','stop_sequence']:
                             # yield event
+                            turn_i = max_turns
                             continue
 
             except Exception as e:
                 logger.error(f"Stream processing error: {e}")
                 yield {"type": "error", "data": {"error": str(e)}}
+                turn_i = max_turns
+                break

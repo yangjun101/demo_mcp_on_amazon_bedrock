@@ -17,6 +17,7 @@ load_dotenv()  # load environment variables from .env
 
 logger = logging.getLogger(__name__)
 
+CLAUDE_37_SONNET_MODEL_ID = 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'
 
 class ChatClient:
     """Bedrock simple chat wrapper"""
@@ -46,7 +47,7 @@ class ChatClient:
     
     async def process_query(self, query: str = "", 
             model_id="amazon.nova-lite-v1:0", max_tokens=1024, temperature=0.1,max_turns=30,
-            history=[], system=[], mcp_client=None, mcp_server_ids=[]) -> Dict:
+            history=[], system=[], mcp_client=None, mcp_server_ids=[],extra_params={}) -> Dict:
         """Submit user query or history messages, and then get the response answer.
 
         Note the specified mcp servers' tool maybe used.
@@ -65,24 +66,30 @@ class ChatClient:
 
         # logger.info(f"tool_config: {tool_config}")
         bedrock_client = self._get_bedrock_client()
+        
+        enable_thinking = extra_params.get('enable_thinking', False) and model_id in CLAUDE_37_SONNET_MODEL_ID
+        if enable_thinking:
+            additionalModelRequestFields = {"reasoning_config": { "type": "enabled","budget_tokens": extra_params.get("budget_tokens",1024)}}
+            inferenceConfig={"maxTokens":max(extra_params.get("budget_tokens",1024) + 1, max_tokens),"temperature":1,}
 
-        # invoke bedrock llm with user query
-        if tool_config:
-            response = bedrock_client.converse(
-                modelId=model_id,
-                messages=messages,
-                system=system,
-                toolConfig=tool_config,
-                inferenceConfig={"maxTokens":max_tokens,"temperature":temperature,}
-            )
         else:
-            response = bedrock_client.converse(
-                modelId=model_id,
-                messages=messages,
-                system=system,
-                inferenceConfig={"maxTokens":max_tokens,"temperature":temperature,}
-
-            )
+            additionalModelRequestFields = {}
+            inferenceConfig={"maxTokens":max_tokens,"temperature":temperature,}
+        
+        requestParams = dict(
+                    modelId=model_id,
+                    messages=messages,
+                    system=system,
+                    inferenceConfig=inferenceConfig,
+                    additionalModelRequestFields = additionalModelRequestFields
+        )
+        requestParams = {**requestParams, 'toolConfig': tool_config} if tool_config else requestParams
+        
+        # invoke bedrock llm with user query
+        response = bedrock_client.converse(
+                    **requestParams
+        )
+        logger.info(f"response: {response}")
 
         # the response may or not request tool use
         output_message = response['output']['message']
@@ -144,9 +151,7 @@ class ChatClient:
 
                 # send the tool results to the model.
                 response = bedrock_client.converse(
-                    modelId=model_id,
-                    messages=messages,
-                    toolConfig=tool_config,
+                   **requestParams
                 )
                 stop_reason = response['stopReason']
                 output_message = response['output']['message']

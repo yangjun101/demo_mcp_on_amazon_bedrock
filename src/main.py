@@ -60,6 +60,7 @@ class ChatCompletionRequest(BaseModel):
     temperature: float = 0.5
     top_p: float = 0.9
     top_k: int = 50
+    extra_params : Optional[dict] = None
     stream: Optional[bool] = None
     tools: Optional[List[dict]] = None
     options: Optional[dict] = None
@@ -182,17 +183,19 @@ async def stream_chat_response(data: ChatCompletionRequest) -> AsyncGenerator[st
     } for x in data.messages]
     system = []
     if messages and messages[0]['role'] == 'system':
-        system = [{"text":messages[0]['content'][0]["text"]}]
+        system = [{"text":messages[0]['content'][0]["text"]}] if messages[0]['content'][0]["text"] else []
         messages = messages[1:]
 
     # bedrock's first turn cannot be assistant
     if messages and messages[0]['role'] == 'assistant':
         messages = messages[1:]
 
-    logger.info(f"stream_chat_response data: {data}")
+    # logger.info(f"stream_chat_response data: {data}")
 
     try:
         current_content = ""
+        thinking_start = False
+        thinking_text_index = 0
         async for response in chat_client.process_query_stream(
                 model_id=data.model,
                 max_tokens=data.max_tokens,
@@ -200,7 +203,8 @@ async def stream_chat_response(data: ChatCompletionRequest) -> AsyncGenerator[st
                 history=messages,
                 system=system,
                 mcp_client=mcp_client,
-                mcp_server_ids=data.mcp_server_ids,
+                mcp_server_ids= data.mcp_server_ids,
+                extra_params = data.extra_params,
                 ):
             
             event_data = {
@@ -221,9 +225,25 @@ async def stream_chat_response(data: ChatCompletionRequest) -> AsyncGenerator[st
             
             elif response["type"] == "block_delta":
                 if "text" in response["data"]["delta"]:
-                    text = response["data"]["delta"]["text"]
+                    text = ""
+                    if thinking_text_index >= 1 and thinking_start:    
+                        thinking_start = False
+                        text = "</thinking>"
+                    text += response["data"]["delta"]["text"]
                     current_content += text
                     event_data["choices"][0]["delta"] = {"content": text}
+                    thinking_text_index = 0
+                    
+                if "reasoningContent" in response["data"]["delta"]:
+                    if 'text' in response["data"]["delta"]["reasoningContent"]:
+                        if not thinking_start:
+                            text = "<thinking>" + response["data"]["delta"]["reasoningContent"]["text"]
+                            thinking_start = True
+                        else:
+                            text = response["data"]["delta"]["reasoningContent"]["text"]
+                        event_data["choices"][0]["delta"] = {"content": text}
+                        thinking_text_index += 1
+                    
             
             elif response["type"] == "message_stop":
                 event_data["choices"][0]["finish_reason"] = response["data"]["stopReason"]
@@ -298,7 +318,7 @@ async def chat_completions(request: Request,
 
     system = []
     if messages and messages[0]['role'] == 'system':
-        system = [{"text":messages[0]['content'][0]["text"]}]
+        system = [{"text":messages[0]['content'][0]["text"]}] if messages[0]['content'][0]["text"] else []
         messages = messages[1:]
 
     try:
@@ -311,6 +331,7 @@ async def chat_completions(request: Request,
                 system=system,
                 mcp_client=mcp_client,
                 mcp_server_ids=data.mcp_server_ids,
+                extra_params = data.extra_params,
                 ):
             logger.info(f"response body: {response}")
             is_tool_use = any([bool(x.get('toolUse')) for x in response['content']])
