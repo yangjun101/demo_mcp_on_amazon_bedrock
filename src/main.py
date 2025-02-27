@@ -147,7 +147,7 @@ async def add_mcp_server(request: Request,
         server_id = list(config_json.keys())[0]
         server_cmd = config_json[server_id]["command"]
         server_script_args = config_json[server_id]["args"]
-        server_script_envs = config_json[server_id]["env"]
+        server_script_envs = config_json[server_id].get('env',{})
     # connect mcp server
     try:
         await mcp_client.connect_to_server(

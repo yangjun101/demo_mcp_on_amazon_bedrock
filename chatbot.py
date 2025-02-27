@@ -45,7 +45,7 @@ def request_list_mcp_servers():
         logging.error('request list mcp servers error: %s' % e)
     return mcp_servers
 
-def request_add_mcp_server( server_id, server_name, command, args=[], env={},config_json={}):
+def request_add_mcp_server( server_id, server_name, command, args=[], env=None,config_json={}):
     url = mcp_base_url.rstrip('/') + '/v1/add/mcp_server'
     status = False
     try:
@@ -54,9 +54,10 @@ def request_add_mcp_server( server_id, server_name, command, args=[], env={},con
             "server_desc": server_name,
             "command": command,
             "args": args,
-            "env": env,
             "config_json":config_json
         }
+        if env:
+            payload["env"] = env
         response = requests.post(url, json=payload,headers={
                         'Authorization': f'Bearer {API_KEY}'
                     })
@@ -205,7 +206,7 @@ def add_new_mcp_server_handle():
             server_id = list(config_json.keys())[0]
             server_cmd = config_json[server_id]["command"]
             server_args = config_json[server_id]["args"]
-            server_env = config_json[server_id]["env"]
+            server_env = config_json[server_id].get('env')
         except Exception as e:
             status, msg = False, "The config must be a valid JSON."
 
