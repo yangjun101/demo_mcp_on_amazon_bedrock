@@ -304,7 +304,7 @@ with st.sidebar:
 
     st.session_state.system_prompt = system_prompt
     st.session_state.enable_stream = st.toggle('Stream', value=True)
-    with st.expander(label='已有 MCP Servers', expanded=False):
+    with st.expander(label='已有 MCP Servers', expanded=True):
         for i, server_name in enumerate(st.session_state.mcp_servers):
             st.checkbox(label=server_name, value=False, key=f'mcp_server_{server_name}')
     st.button("添加 MCP Server", 
