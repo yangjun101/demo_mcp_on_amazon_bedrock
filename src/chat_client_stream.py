@@ -208,9 +208,10 @@ class ChatClientStream(ChatClient):
                             }]
                             
                             tool_use_block = [{"toolUse":tool} for tool in tool_calls]
+                            text_block = [{"text": text}] if text else []
                             assistant_message = {
                                 "role": "assistant",
-                                "content":   thinking_block+ tool_use_block if thinking_signature else [{"text": text}] + tool_use_block if text else tool_use_block
+                                "content":   thinking_block+ tool_use_block + text_block if thinking_signature else text_block + tool_use_block
                             }     
                             thinking_signature = ''
                             thinking_text = ''
