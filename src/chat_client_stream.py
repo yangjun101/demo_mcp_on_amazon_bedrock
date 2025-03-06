@@ -34,7 +34,7 @@ class ChatClientStream(ChatClient):
             if "contentBlockStart" in event:
                 block_start = event["contentBlockStart"]
                 yield {"type": "block_start", "data": block_start}
-                continue
+                continue 
 
             # Handle content block delta
             if "contentBlockDelta" in event:
