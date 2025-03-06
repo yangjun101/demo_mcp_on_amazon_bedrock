@@ -11,8 +11,8 @@ import json
 import boto3
 from botocore.config import Config
 from dotenv import load_dotenv
-
 from chat_client import ChatClient
+import base64
 
 load_dotenv()  # load environment variables from .env
 logger = logging.getLogger(__name__)
@@ -169,10 +169,12 @@ class ChatClientStream(ChatClient):
                                 try:
                                     tool_name, tool_args = tool['name'], tool['input']
                                     result = await mcp_client.call_tool(tool_name, tool_args)
+                                    logger.info(f"call_tool result:{result}")
                                     result_content = [{"text": "\n".join([x.text for x in result.content if x.type == 'text'])}]
+                                    image_content =  [{"image":{"format":x.mimeType, "source":{"bytes":base64.b64decode(x.data)} } } for x in result.content if x.type == 'image']
                                     return {
                                         "toolUseId": tool['toolUseId'],
-                                        "content": result_content
+                                        "content": result_content+image_content
                                     }
                                 except Exception as err:
                                     err_msg = f"{tool['name']} tool call is failed. error:{err}"

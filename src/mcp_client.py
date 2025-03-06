@@ -10,10 +10,10 @@ import logging
 import asyncio
 from typing import Optional, Dict
 from contextlib import AsyncExitStack
-
+from pydantic import ValidationError
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client, get_default_environment
-from mcp.types import Resource, Tool, TextContent, ImageContent, EmbeddedResource
+from mcp.types import Resource, Tool, TextContent, ImageContent, EmbeddedResource,CallToolResult
 
 from dotenv import load_dotenv
 
@@ -162,9 +162,20 @@ class MCPClient:
 
         if not server_id or server_id not in self.sessions:
             raise ValueError("Call tool should with server id")
-
-        result = await self.sessions[server_id].call_tool(tool_name, tool_args)
-        return result
+        
+        try:
+            result = await self.sessions[server_id].call_tool(tool_name, tool_args)
+            return result
+        except ValidationError as e:
+            # Extract the actual tool result from the validation error
+            raw_data = e.errors() if hasattr(e, 'errors') else None
+            logger.info(f"raw_data:{raw_data}")
+            if raw_data and len(raw_data) > 0:
+                tool_result = raw_data[0]['input']['toolResult']
+                
+                return CallToolResult.model_validate(tool_result)
+            # Re-raise the exception if the result cannot be extracted
+            raise
 
     async def cleanup(self):
         """Clean up resources"""
