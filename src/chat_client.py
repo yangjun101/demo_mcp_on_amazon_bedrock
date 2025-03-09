@@ -122,6 +122,8 @@ class ChatClient:
                     logger.info("Call tool: %s" % tool)
                     try:
                         tool_name, tool_args = tool['name'], tool['input']
+                        if tool_args == "":
+                            tool_args = {}
                         #parse the tool_name
                         server_id, llm_tool_name = MCPClient.get_tool_name4mcp(tool_name)
                         mcp_client = mcp_clients.get(server_id)

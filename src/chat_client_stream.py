@@ -171,7 +171,8 @@ class ChatClientStream(ChatClient):
                                 logger.info("Call tool: %s" % tool)
                                 try:
                                     tool_name, tool_args = tool['name'], tool['input']
-                                    
+                                    if tool_args == "":
+                                        tool_args = {}
                                     #parse the tool_name
                                     server_id, llm_tool_name = MCPClient.get_tool_name4mcp(tool_name)
                                     mcp_client = mcp_clients.get(server_id)
@@ -232,7 +233,16 @@ class ChatClientStream(ChatClient):
                                     }
                             }]
                             
-                            tool_use_block = [{"toolUse":tool} for tool in tool_calls]
+                            # tool_use_block = [{"toolUse":tool} for tool in tool_calls]
+                            tool_use_block = []
+                            for tool in tool_calls:
+                                # if not json object, converse api will raise error
+                                if tool['input'] == "":
+                                    tool_use_block.append({"toolUse":{"name":tool['name'],"toolUseId":tool['toolUseId'],"input":{}}})
+                                else:
+                                    tool_use_block.append({"toolUse":tool})
+             
+                            
                             text_block = [{"text": text}] if text else []
                             assistant_message = {
                                 "role": "assistant",
