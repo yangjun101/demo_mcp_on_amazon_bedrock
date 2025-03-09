@@ -21,7 +21,8 @@ load_dotenv()  # load environment variables from .env
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 delimiter = "___"
-
+tool_name_mapping = {}
+tool_name_mapping_r = {}
 class MCPClient:
     """Manage MCP sessions.
 
@@ -31,58 +32,60 @@ class MCPClient:
     - call tool and get result from server
     """
 
-    def __init__(self, access_key_id='', secret_access_key='', region='us-east-1'):
+    def __init__(self, name, access_key_id='', secret_access_key='', region='us-east-1'):
         self.env = {
             'AWS_ACCESS_KEY_ID': access_key_id or os.environ.get('AWS_ACCESS_KEY_ID'),
             'AWS_SECRET_ACCESS_KEY': secret_access_key or os.environ.get('AWS_SECRET_ACCESS_KEY'),
             'AWS_REGION': region or os.environ.get('AWS_REGION'),
         }
-        self.sessions: Dict[str, Optional[ClientSession]] = {}
+        self.name = name
+        # self.sessions: Dict[str, Optional[ClientSession]] = {}
+        self.session = None
         self.exit_stack = AsyncExitStack()
-        self._tool_name_mapping = {}
-        self._tool_name_mapping_r = {}
 
-    def _normalize_tool_name(self, tool_name):
+    @staticmethod
+    def normalize_tool_name( tool_name):
         return tool_name.replace('-', '_').replace('/', '_').replace(':', '_')
-
-    def _get_tool_name4llm(self, server_id, tool_name, norm=True, ns_delimiter=delimiter):
+    
+    @staticmethod
+    def get_tool_name4llm( server_id, tool_name, norm=True, ns_delimiter=delimiter):
         """Convert MCP server tool name to llm tool call"""
+        global tool_name_mapping, tool_name_mapping_r
         # prepend server prefix namespace to support multi-mcp-server
         tool_key = server_id + ns_delimiter + tool_name
-        tool_name4llm = tool_key if not norm else self._normalize_tool_name(tool_key)
-        self._tool_name_mapping[tool_key] = tool_name4llm
-        self._tool_name_mapping_r[tool_name4llm] = tool_key
+        tool_name4llm = tool_key if not norm else MCPClient.normalize_tool_name(tool_key)
+        tool_name_mapping[tool_key] = tool_name4llm
+        tool_name_mapping_r[tool_name4llm] = tool_key
         return tool_name4llm
-
-    def _get_tool_name4mcp(self, tool_name4llm, ns_delimiter=delimiter):
+    
+    @staticmethod
+    def get_tool_name4mcp( tool_name4llm, ns_delimiter=delimiter):
         """Convert llm tool call name to MCP server original name"""
+        global  tool_name_mapping_r
         server_id, tool_name = "", ""
-        tool_name4mcp = self._tool_name_mapping_r.get(tool_name4llm, "")
+        tool_name4mcp = tool_name_mapping_r.get(tool_name4llm, "")
         if len(tool_name4mcp.split(ns_delimiter)) == 2:
             server_id, tool_name = tool_name4mcp.split(ns_delimiter)
         return server_id, tool_name
 
-    async def disconnect_to_server(self, server_id: str):
-        if server_id in self.sessions:
-            del self.sessions[server_id]
-            logger.info(f"\nDisconnected to server [{server_id}]")
-        else:
-            logger.error(f"\nDisconnected not found server [{server_id}]")
+    async def disconnect_to_server(self):
+        await self.cleanup()
+        # if server_id in self.sessions:
+        #     del self.sessions[server_id]
+        #     logger.info(f"\nDisconnected to server [{server_id}]")
+        # else:
+        #     logger.error(f"\nDisconnected not found server [{server_id}]")
 
     async def handle_resource_change(params: NotificationParams):
         print(f"资源变更类型: {params['changeType']}")
         print(f"受影响URI: {params['resourceURIs']}")
     
     
-    async def connect_to_server(self, server_id: str, 
-            server_script_path: str = "", server_script_args: list = [], 
+    async def connect_to_server(self, server_script_path: str = "", server_script_args: list = [], 
             server_script_envs: Dict = {}, command: str = ""):
         """Connect to an MCP server"""
         if not ((command and server_script_args) or server_script_path):
             raise ValueError("Run server via script or command.")
-
-        if server_id in self.sessions:
-            raise ValueError("Server already start a session")
 
         if server_script_path:
             # run via script
@@ -128,8 +131,7 @@ class MCPClient:
     
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
         _stdio, _write = stdio_transport
-        self.sessions[server_id] = await self.exit_stack.enter_async_context(ClientSession(_stdio, _write))
-        
+        self.session = await self.exit_stack.enter_async_context(ClientSession(_stdio, _write))
         # logger.info(f"\n{server_id} set_notification_handler")
         # self.sessions[server_id].set_notification_handler(
         #     "resources/list_changed", 
@@ -139,52 +141,43 @@ class MCPClient:
         # logger.info(f"\n{server_id} subscribe resource")
         # await session.subscribe(resources=["file:///*"])
         
-        logger.info(f"\n{server_id} sessions initialize")
-        await self.sessions[server_id].initialize()   
+        logger.info(f"\n{self.name} session initialize")
+        await self.session.initialize()   
         try:
  
-            resource = await self.sessions[server_id].list_resources()
-            logger.info(f"\n{server_id} list_resources:{resource}")
+            resource = await self.session.list_resources()
+            logger.info(f"\n{self.name} list_resources:{resource}")
         except McpError as e:
-            logger.info(f"\n{server_id} list_resources:{str(e)}")
+            logger.info(f"\n{self.name} list_resources:{str(e)}")
         # List available tools
-        response = await self.sessions[server_id].list_tools()
+        response = await self.session.list_tools()
         tools = response.tools
-        logger.info(f"\nConnected to server [{server_id}] with tools: " + str([tool.name for tool in tools]))
+        logger.info(f"\nConnected to server [{self.name}] with tools: " + str([tool.name for tool in tools]))
 
-    async def get_tool_config(self, model_provider='bedrock', server_ids: list = []):
+    async def get_tool_config(self, model_provider='bedrock', server_id : str = ''):
         """Get llm's tool usage config via MCP server"""
         # list tools via mcp server
-        responses = [(server_id, await self.sessions[server_id].list_tools()) 
-                     for server_id in self.sessions if server_id in server_ids]
-
-        if not responses:
+        response = await self.session.list_tools()
+        if not response:
             return None
 
         # for bedrock tool config
         tool_config = {"tools": []}
-        for server_id, response in responses:
-            tool_config["tools"].extend([{
-                "toolSpec":{
-                    # mcp tool's original name to llm tool name (with server id namespace)
-                    "name": self._get_tool_name4llm(server_id, tool.name, norm=True),
-                    "description": tool.description, 
-                    "inputSchema": {"json": tool.inputSchema}
-                }
-            } for tool in response.tools])
+        tool_config["tools"].extend([{
+            "toolSpec":{
+                # mcp tool's original name to llm tool name (with server id namespace)
+                "name": MCPClient.get_tool_name4llm(server_id, tool.name, norm=True),
+                "description": tool.description, 
+                "inputSchema": {"json": tool.inputSchema}
+            }
+        } for tool in response.tools])
 
         return tool_config
 
-    async def call_tool(self, tool_name, tool_args, server_id=""):
+    async def call_tool(self, tool_name, tool_args):
         """Call tool via MCP server"""
-        if not server_id:
-            server_id, tool_name = self._get_tool_name4mcp(tool_name)  # llm tool name to mcp
-
-        if not server_id or server_id not in self.sessions:
-            raise ValueError("Call tool should with server id")
-        
         try:
-            result = await self.sessions[server_id].call_tool(tool_name, tool_args)
+            result = await self.session.call_tool(tool_name, tool_args)
             return result
         except ValidationError as e:
             # Extract the actual tool result from the validation error

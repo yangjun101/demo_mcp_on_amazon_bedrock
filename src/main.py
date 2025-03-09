@@ -31,7 +31,8 @@ from chat_client_stream import ChatClientStream
 from mcp.shared.exceptions import McpError
 
 chat_client = ChatClientStream()
-mcp_client = MCPClient()
+# mcp_client = MCPClient()
+mcp_clients = {}
 mcp_server_list = {}
 llm_model_list = {}
 
@@ -150,6 +151,7 @@ async def add_mcp_server(request: Request,
         server_script_args = config_json[server_id]["args"]
         server_script_envs = config_json[server_id].get('env',{})
     # connect mcp server
+    mcp_client = MCPClient(name=server_id)
     try:
         await mcp_client.connect_to_server(
             server_id=server_id,
@@ -167,6 +169,8 @@ async def add_mcp_server(request: Request,
             msg="MCP server connect failed!"
         ).model_dump())
 
+    # add to clients list
+    mcp_clients[server_id] = mcp_client
     # add to server list
     mcp_server_list[server_id] = server_desc
     
@@ -203,7 +207,7 @@ async def stream_chat_response(data: ChatCompletionRequest) -> AsyncGenerator[st
                 temperature=data.temperature,
                 history=messages,
                 system=system,
-                mcp_client=mcp_client,
+                mcp_clients=mcp_clients,
                 mcp_server_ids= data.mcp_server_ids,
                 extra_params = data.extra_params,
                 ):
@@ -330,7 +334,7 @@ async def chat_completions(request: Request,
                 temperature=data.temperature,
                 history=messages,
                 system=system,
-                mcp_client=mcp_client,
+                mcp_clients=mcp_clients,
                 mcp_server_ids=data.mcp_server_ids,
                 extra_params = data.extra_params,
                 ):
@@ -396,6 +400,21 @@ async def chat_completions(request: Request,
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def cleanup_all_clients(mcp_clients):
+    """清理所有 MCP 客户端连接"""
+    cleanup_tasks = []
+    
+    # 为每个客户端创建清理任务
+    for client_id, client in mcp_clients.items():
+        cleanup_tasks.append(client.cleanup())
+    
+    # 并行执行所有清理任务
+    if cleanup_tasks:
+        await asyncio.gather(*cleanup_tasks)
+        print(f"已清理 {len(cleanup_tasks)} 个客户端连接")
+
+
+
 if __name__ == '__main__':
     import uvicorn
 
@@ -414,12 +433,15 @@ if __name__ == '__main__':
                 for server_id, server_conf in conf.get('mcpServers', {}).items():
                     if server_conf.get('status') == 0:
                         continue
+                    
+                    mcp_client = MCPClient(name=server_id)
                     loop.run_until_complete(mcp_client.connect_to_server(
-                        server_id=server_id,
                         command=server_conf['command'],
                         server_script_args=server_conf['args'],
                         server_script_envs=server_conf.get('env', {})
                     ))
+                    
+                    mcp_clients[server_id] = mcp_client
                     mcp_server_list[server_id] = server_conf.get('description', server_id)
 
                 for model_conf in conf.get('models', []):
@@ -430,4 +452,4 @@ if __name__ == '__main__':
         loop.run_until_complete(server.serve())
     finally:
         loop.close()
-        asyncio.run(mcp_client.cleanup())
+        asyncio.run(cleanup_all_clients(mcp_clients))
