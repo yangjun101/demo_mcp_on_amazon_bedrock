@@ -36,9 +36,10 @@ class ChatClient:
             region_name=self.env['AWS_REGION'],
             config=Config(
                 retries={
-                    "max_attempts": 10,
+                    "max_attempts": 3,
                     "mode": "standard",
                 },
+                read_timeout=300,
             )
         )
 
