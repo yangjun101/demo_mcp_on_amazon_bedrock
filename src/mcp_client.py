@@ -13,8 +13,8 @@ from contextlib import AsyncExitStack
 from pydantic import ValidationError
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client, get_default_environment
-from mcp.types import Resource, Tool, TextContent, ImageContent, EmbeddedResource,CallToolResult
-
+from mcp.types import Resource, Tool, TextContent, ImageContent, EmbeddedResource,CallToolResult,NotificationParams
+from mcp.shared.exceptions import McpError
 from dotenv import load_dotenv
 
 load_dotenv()  # load environment variables from .env
@@ -69,6 +69,11 @@ class MCPClient:
         else:
             logger.error(f"\nDisconnected not found server [{server_id}]")
 
+    async def handle_resource_change(params: NotificationParams):
+        print(f"资源变更类型: {params['changeType']}")
+        print(f"受影响URI: {params['resourceURIs']}")
+    
+    
     async def connect_to_server(self, server_id: str, 
             server_script_path: str = "", server_script_args: list = [], 
             server_script_envs: Dict = {}, command: str = ""):
@@ -124,9 +129,24 @@ class MCPClient:
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
         _stdio, _write = stdio_transport
         self.sessions[server_id] = await self.exit_stack.enter_async_context(ClientSession(_stdio, _write))
-    
-        await self.sessions[server_id].initialize()
-    
+        
+        # logger.info(f"\n{server_id} set_notification_handler")
+        # self.sessions[server_id].set_notification_handler(
+        #     "resources/list_changed", 
+        #     handle_resource_change
+        # )
+        # 主动订阅资源变更
+        # logger.info(f"\n{server_id} subscribe resource")
+        # await session.subscribe(resources=["file:///*"])
+        
+        logger.info(f"\n{server_id} sessions initialize")
+        await self.sessions[server_id].initialize()   
+        try:
+ 
+            resource = await self.sessions[server_id].list_resources()
+            logger.info(f"\n{server_id} list_resources:{resource}")
+        except McpError as e:
+            logger.info(f"\n{server_id} list_resources:{str(e)}")
         # List available tools
         response = await self.sessions[server_id].list_tools()
         tools = response.tools
@@ -171,7 +191,7 @@ class MCPClient:
             raw_data = e.errors() if hasattr(e, 'errors') else None
             logger.info(f"raw_data:{raw_data}")
             if raw_data and len(raw_data) > 0:
-                tool_result = raw_data[0]['input']['toolResult']
+                tool_result = raw_data[0]['input']
                 
                 return CallToolResult.model_validate(tool_result)
             # Re-raise the exception if the result cannot be extracted

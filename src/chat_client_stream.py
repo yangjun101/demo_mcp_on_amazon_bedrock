@@ -169,22 +169,34 @@ class ChatClientStream(ChatClient):
                                 try:
                                     tool_name, tool_args = tool['name'], tool['input']
                                     result = await mcp_client.call_tool(tool_name, tool_args)
-                                    logger.info(f"call_tool result:{result}")
+                                    # logger.info(f"call_tool result:{result}")
                                     result_content = [{"text": "\n".join([x.text for x in result.content if x.type == 'text'])}]
-                                    image_content =  [{"image":{"format":x.mimeType, "source":{"bytes":base64.b64decode(x.data)} } } for x in result.content if x.type == 'image']
-                                    return {
-                                        "toolUseId": tool['toolUseId'],
-                                        "content": result_content+image_content
-                                    }
+                                    image_content =  [{"image":{"format":x.mimeType.replace('image/',''), "source":{"bytes":base64.b64decode(x.data)} } } for x in result.content if x.type == 'image']
+                                    return [{ 
+                                                "toolUseId": tool['toolUseId'],
+                                                "content": result_content+image_content
+                                            },
+                                            { 
+                                                "toolUseId": tool['toolUseId'],
+                                                "content": result_content
+                                            }]
+                                    
                                 except Exception as err:
                                     err_msg = f"{tool['name']} tool call is failed. error:{err}"
-                                    return {
-                                        "toolUseId": tool['toolUseId'],
-                                        "content": [{"text": err_msg}],
-                                        "status": 'error'
-                                    }
+                                    return [{
+                                                "toolUseId": tool['toolUseId'],
+                                                "content": [{"text": err_msg}],
+                                                "status": 'error'
+                                            }]*2
                             # 使用 asyncio.gather 并行执行所有工具调用
-                            tool_results = await asyncio.gather(*[execute_tool_call(tool) for tool in tool_calls])
+                            call_results = await asyncio.gather(*[execute_tool_call(tool) for tool in tool_calls])
+                            # Correctly unpack the results - each call_result is a list of [tool_result, tool_text_result]
+                            tool_results = []
+                            tool_text_results = []
+                            for result in call_results:
+                                tool_results.append(result[0])
+                                tool_text_results.append(result[1])
+                            logger.info(f'tool_text_results {tool_text_results}')
                             # 处理所有工具调用的结果
                             tool_results_content = []
                             for tool_result in tool_results:
@@ -196,7 +208,8 @@ class ChatClientStream(ChatClient):
                                 "content": tool_results_content
                             }
                             # output tool results
-                            event["data"]["tool_results"] = [item for pair in zip(tool_calls, tool_results) for item in pair]
+                            event["data"]["tool_results"] = [item for pair in zip(tool_calls, tool_text_results) for item in pair]
+                            logger.info('yield event*****')
                             yield event
                             #append assistant message   
                             thinking_block = [{

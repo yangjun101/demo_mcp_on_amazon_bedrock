@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from fastapi.exceptions import RequestValidationError
 from mcp_client import MCPClient
 from chat_client_stream import ChatClientStream
+from mcp.shared.exceptions import McpError
 
 chat_client = ChatClientStream()
 mcp_client = MCPClient()
