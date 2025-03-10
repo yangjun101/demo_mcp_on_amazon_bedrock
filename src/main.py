@@ -154,12 +154,12 @@ async def add_mcp_server(request: Request,
     mcp_client = MCPClient(name=server_id)
     try:
         await mcp_client.connect_to_server(
-            server_id=server_id,
+            # server_id=server_id,
             command=server_cmd,
             server_script_args=server_script_args,
             server_script_envs=server_script_envs
         )
-        tool_conf = await mcp_client.get_tool_config(server_ids=[server_id])
+        tool_conf = await mcp_client.get_tool_config(server_id=server_id)
         logger.info(f"Connected MCP server {server_id}, tools={tool_conf}")
     except Exception as e:
         tool_conf = {}
