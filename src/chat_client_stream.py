@@ -13,6 +13,7 @@ from botocore.config import Config
 from dotenv import load_dotenv
 from chat_client import ChatClient
 import base64
+from mcp_client import MCPClient
 
 load_dotenv()  # load environment variables from .env
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class ChatClientStream(ChatClient):
 
     async def process_query_stream(self, query: str = "",
             model_id="amazon.nova-lite-v1:0", max_tokens=1024, max_turns=30,temperature=0.1,
-            history=[], system=[],mcp_client=None, mcp_server_ids=[],extra_params={}) -> AsyncGenerator[Dict, None]:
+            history=[], system=[],mcp_clients=None, mcp_server_ids=[],extra_params={}) -> AsyncGenerator[Dict, None]:
         """Submit user query or history messages, and get streaming response.
         
         Similar to process_query but uses converse_stream API for streaming responses.
@@ -72,9 +73,11 @@ class ChatClientStream(ChatClient):
         messages = history
 
         # get tools from mcp server
-        tool_config = None
-        if mcp_client is not None:
-            tool_config = await mcp_client.get_tool_config(server_ids=mcp_server_ids)
+        tool_config = {"tools": []}
+        if mcp_clients is not None:
+            for mcp_server_id in mcp_server_ids:
+                tool_config_response = await mcp_clients[mcp_server_id].get_tool_config(server_id=mcp_server_id)
+                tool_config['tools'].extend(tool_config_response["tools"])
 
         bedrock_client = self._get_bedrock_client()
         
@@ -162,13 +165,21 @@ class ChatClientStream(ChatClient):
                         stop_reason = event["data"]["stopReason"]
                         
                         # Handle tool use if needed
-                        if stop_reason == "tool_use" and tool_calls and mcp_client:
+                        if stop_reason == "tool_use" and tool_calls:
                             # 并行执行所有工具调用
                             async def execute_tool_call(tool):
                                 logger.info("Call tool: %s" % tool)
                                 try:
                                     tool_name, tool_args = tool['name'], tool['input']
-                                    result = await mcp_client.call_tool(tool_name, tool_args)
+                                    if tool_args == "":
+                                        tool_args = {}
+                                    #parse the tool_name
+                                    server_id, llm_tool_name = MCPClient.get_tool_name4mcp(tool_name)
+                                    mcp_client = mcp_clients.get(server_id)
+                                    if mcp_client is None:
+                                        raise Exception(f"mcp_client is None, server_id:{server_id}")
+                                    
+                                    result = await mcp_client.call_tool(llm_tool_name, tool_args)
                                     # logger.info(f"call_tool result:{result}")
                                     result_content = [{"text": "\n".join([x.text for x in result.content if x.type == 'text'])}]
                                     image_content =  [{"image":{"format":x.mimeType.replace('image/',''), "source":{"bytes":base64.b64decode(x.data)} } } for x in result.content if x.type == 'image']
@@ -222,7 +233,16 @@ class ChatClientStream(ChatClient):
                                     }
                             }]
                             
-                            tool_use_block = [{"toolUse":tool} for tool in tool_calls]
+                            # tool_use_block = [{"toolUse":tool} for tool in tool_calls]
+                            tool_use_block = []
+                            for tool in tool_calls:
+                                # if not json object, converse api will raise error
+                                if tool['input'] == "":
+                                    tool_use_block.append({"toolUse":{"name":tool['name'],"toolUseId":tool['toolUseId'],"input":{}}})
+                                else:
+                                    tool_use_block.append({"toolUse":tool})
+             
+                            
                             text_block = [{"text": text}] if text else []
                             assistant_message = {
                                 "role": "assistant",
