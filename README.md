@@ -110,36 +110,6 @@ curl http://127.0.0.1:7002/v1/chat/completions \
   }'
 ```
 
-- Demo 示例1: 使用Amazon Knowledge Base
-先在Bedrock console中创建或者使用已有的Bedrock，记下Knowledge Base Id  
-Clone [AWS Knowledge Base Retrieval MCP Server](https://github.com/modelcontextprotocol/servers)到本地，并用[docs/aws-kb-retrieval-server/index.ts)](docs/aws-kb-retrieval-server/index.ts)下的文件替换 `src/aws-kb-retrieval-server/index.ts`里的文件。  
-> 新文件把knowledgeBaseId通过环境变量指定，无须再通过对话传入。  
-
-在新clone的servers目录下用如下命令打包  
-```sh
-docker build -t mcp/aws-kb-retrieval:latest -f src/aws-kb-retrieval-server/Dockerfile . 
-```
-
-然后在chatbot界面上添加这个json文件，注意env中的字段需要替换成自己的账号信息，以及Knowledge Base Id   
-```json
-{
-  "mcpServers": {
-    "aws-kb-retrieval": {
-      "command": "docker",
-      "args": [ "run", "-i", "--rm", "-e", "AWS_ACCESS_KEY_ID", "-e", "AWS_SECRET_ACCESS_KEY", "-e", "AWS_REGION", "-e", "knowledgeBaseId", "mcp/aws-kb-retrieval:latest" ],
-      "env": {
-        "AWS_ACCESS_KEY_ID": "YOUR_ACCESS_KEY_HERE",
-        "AWS_SECRET_ACCESS_KEY": "YOUR_SECRET_ACCESS_KEY_HERE",
-        "AWS_REGION": "YOUR_AWS_REGION_HERE",
-        "knowledgeBaseId":"The knowledage base id"
-      }
-    }
-  }
-}
-```
-
-
-
 ### ChatBot UI 服务
 
 待启动后，可查看日志 `logs/start_chatbot.log` 确认无报错，然后浏览器打开[服务地址](http://localhost:8502/)，即可体验 MCP 增强后的 Bedrock 大模型 ChatBot 能力。
@@ -187,7 +157,41 @@ read the content of rows.txt file
 
 此时在已有 MCP Server 列表中就可以看到新添加项，勾选即可启动该 MCP Server。
 
-## 开启Deep Research
+## 5 Demo cases
+### 5.1.使用MCP操作Browser浏览器 
+- 先安装 MCP-browser，注意：如果在本地部署这个demo可以可视化看到浏览器自动运行效果。如果是在服务器上部署，则需要修改成浏览器无头模式。
+找一个目录中下载
+```bash
+git clone https://github.com/xiehust/mcp-browser-automation.git
+cd mcp-browser-automation
+# 使用npm命令编译安装
+npm install
+```  
+- 注意服务器上部署，则需要修改成浏览器无头模式，修改mcp-browser-automation/src/toolsHandler.ts中headless:true,
+再运行npm install
+```ts
+browser = await chromium.launch({ headless: true });
+```
+
+- 然后在chatbot界面上添加这个json文件，注意args中的/path_to/路径
+```json
+{ "mcpServers": 
+	{ "mcp-browser": 
+		{ "command": "node", "args": ["/path_to/mcp-browser-automation/dist/index.js"] 
+		} 
+	} 
+}
+```
+- 在chatbot界面中，勾选mcp-browser和local file system 两个server  
+system prompt输入：`If you need to use search engine, please visit www.bing.com, do not visit google.`  
+输入任务：`帮我整理一份关于小米SU7 ultra的介绍，包括性能，价格，特色功能，图文并茂，并制作成精美的HTML保存到本地目录中`  
+[视频demo](https://mp.weixin.qq.com/s/csg7N8SHoIR2WBgFOjpm6A)  
+[最终输出文件示例](docs/xiaomi_su7_ultra_intro.html)  
+  - 如果第一次运行可能需要额外安装一些软件，请跟进tool call 返回的信息提示安装即可  
+
+
+
+### 5.2.开启Deep Research
 - 同时启用 websearch(参考上面的EXA配置)和 [Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)，目前已经预置了Sequential Thinking MCP Server在配置文件中, 启动后可以看到server名称是cot。  
 ![alt text](docs/image-serverlist.png)
 - Sequential Thinking提供通过动态的结构化思维过程和反思，通过工具调用的促使模型按工具输入的要求进行结构化输出推理链条。
@@ -204,8 +208,36 @@ read the content of rows.txt file
 ![alt text](docs/image_deepresearch_2.png)
 
 
+###  5.3. 使用Amazon Knowledge Base
+先在Bedrock console中创建或者使用已有的Bedrock，记下Knowledge Base Id  
+Clone [AWS Knowledge Base Retrieval MCP Server](https://github.com/modelcontextprotocol/servers)到本地，并用[docs/aws-kb-retrieval-server/index.ts)](docs/aws-kb-retrieval-server/index.ts)下的文件替换 `src/aws-kb-retrieval-server/index.ts`里的文件。  
+> 新文件把knowledgeBaseId通过环境变量指定，无须再通过对话传入。  
 
-## 5. 停止服务
+在新clone的servers目录下用如下命令打包  
+```sh
+docker build -t mcp/aws-kb-retrieval:latest -f src/aws-kb-retrieval-server/Dockerfile . 
+```
+
+然后在chatbot界面上添加这个json文件，注意env中的字段需要替换成自己的账号信息，以及Knowledge Base Id   
+```json
+{
+  "mcpServers": {
+    "aws-kb-retrieval": {
+      "command": "docker",
+      "args": [ "run", "-i", "--rm", "-e", "AWS_ACCESS_KEY_ID", "-e", "AWS_SECRET_ACCESS_KEY", "-e", "AWS_REGION", "-e", "knowledgeBaseId", "mcp/aws-kb-retrieval:latest" ],
+      "env": {
+        "AWS_ACCESS_KEY_ID": "YOUR_ACCESS_KEY_HERE",
+        "AWS_SECRET_ACCESS_KEY": "YOUR_SECRET_ACCESS_KEY_HERE",
+        "AWS_REGION": "YOUR_AWS_REGION_HERE",
+        "knowledgeBaseId":"The knowledage base id"
+      }
+    }
+  }
+}
+```
+
+
+## 6. 停止服务
 ```bash
 bash stop_all.sh
 ```
