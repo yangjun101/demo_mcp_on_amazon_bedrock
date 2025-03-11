@@ -70,6 +70,9 @@ class ChatClient:
         bedrock_client = self._get_bedrock_client()
         
         enable_thinking = extra_params.get('enable_thinking', False) and model_id in CLAUDE_37_SONNET_MODEL_ID
+        only_n_most_recent_images = extra_params.get('only_n_most_recent_images', 3)
+        image_truncation_threshold = only_n_most_recent_images or 0
+        
         if enable_thinking:
             additionalModelRequestFields = {"reasoning_config": { "type": "enabled","budget_tokens": extra_params.get("budget_tokens",1024)}}
             inferenceConfig={"maxTokens":max(extra_params.get("budget_tokens",1024) + 1, max_tokens),"temperature":1,}
@@ -156,6 +159,13 @@ class ChatClient:
                     "content": tool_results_content
                 }
                 messages.append(tool_result_message)
+                
+                if only_n_most_recent_images:
+                    maybe_filter_to_n_most_recent_images(
+                        messages,
+                        only_n_most_recent_images,
+                        min_removal_threshold=image_truncation_threshold,
+                )
                 # return tool use results
                 yield tool_result_message
 

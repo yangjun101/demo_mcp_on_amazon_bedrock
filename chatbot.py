@@ -164,6 +164,8 @@ if "enable_stream" not in st.session_state:
 if "enable_thinking" not in st.session_state:
     st.session_state.enable_thinking = False
 
+    
+
 # Function to clear conversation history
 def clear_conversation():
     st.session_state.messages = [
@@ -291,19 +293,20 @@ def add_new_mcp_server():
 with st.sidebar:
     llm_model_name = st.selectbox('Model List',
                                   list(st.session_state.model_names.keys()))
-    max_tokens = st.number_input('Max output token',
+    st.session_state.max_tokens = st.number_input('Max output token',
                                  min_value=1, max_value=64000, value=4000)
-    budget_tokens = st.number_input('Max thinking token',
+    st.session_state.budget_tokens = st.number_input('Max thinking token',
                                  min_value=1024, max_value=128000, value=8192,step=1024)
-    temperature = st.number_input('Temperature',
+    st.session_state.temperature = st.number_input('Temperature',
                                  min_value=0.0, max_value=1.0, value=0.6, step=0.1)
-    system_prompt = st.text_area('System',
+    st.session_state.only_n_most_recent_images = st.number_input('N most recent images',
+                                 min_value=0, value=3)
+    st.session_state.system_prompt = st.text_area('System',
                                 value=st.session_state.system_prompt,
                                 height=100,
                                 )
     st.session_state.enable_thinking = st.toggle('Thinking', value=False)
 
-    st.session_state.system_prompt = system_prompt
     st.session_state.enable_stream = st.toggle('Stream', value=True)
     with st.expander(label='已有 MCP Servers', expanded=True):
         for i, server_name in enumerate(st.session_state.mcp_servers):
@@ -340,8 +343,11 @@ if prompt := st.chat_input():
         response_placeholder = st.empty()
         full_response = ""
         response, msg_extras = request_chat(st.session_state.messages, model_id, 
-                        mcp_server_ids, stream=st.session_state.enable_stream, max_tokens=max_tokens, temperature=temperature, extra_params={
-                            "budget_tokens":budget_tokens,
+                        mcp_server_ids, stream=st.session_state.enable_stream,
+                        max_tokens=st.session_state.max_tokens,
+                        temperature=st.session_state.temperature, extra_params={
+                            "only_n_most_recent_images":st.session_state.only_n_most_recent_images,
+                            "budget_tokens":st.session_state.budget_tokens,
                             "enable_thinking":st.session_state.enable_thinking
                         }
                     )
