@@ -35,7 +35,7 @@ chat_client = ChatClientStream()
 mcp_clients = {}
 mcp_server_list = {}
 llm_model_list = {}
-
+MAX_TURNS = 50
 load_dotenv() # load env vars from .env
 
 API_KEY = os.environ.get("API_KEY")
@@ -207,6 +207,7 @@ async def stream_chat_response(data: ChatCompletionRequest) -> AsyncGenerator[st
                 temperature=data.temperature,
                 history=messages,
                 system=system,
+                max_turns=MAX_TURNS,
                 mcp_clients=mcp_clients,
                 mcp_server_ids= data.mcp_server_ids,
                 extra_params = data.extra_params,
@@ -334,6 +335,7 @@ async def chat_completions(request: Request,
                 temperature=data.temperature,
                 history=messages,
                 system=system,
+                max_turns=MAX_TURNS,
                 mcp_clients=mcp_clients,
                 mcp_server_ids=data.mcp_server_ids,
                 extra_params = data.extra_params,

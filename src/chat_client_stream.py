@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from chat_client import ChatClient
 import base64
 from mcp_client import MCPClient
+from utils import maybe_filter_to_n_most_recent_images
 
 load_dotenv()  # load environment variables from .env
 logger = logging.getLogger(__name__)
@@ -89,7 +90,8 @@ class ChatClientStream(ChatClient):
         turn_i = 1
 
         enable_thinking = extra_params.get('enable_thinking', False) and model_id in CLAUDE_37_SONNET_MODEL_ID
-        
+        only_n_most_recent_images = extra_params.get('only_n_most_recent_images', 3)
+        image_truncation_threshold = only_n_most_recent_images or 0
 
         if enable_thinking:
             additionalModelRequestFields = {"reasoning_config": { "type": "enabled","budget_tokens": extra_params.get("budget_tokens",1024)}}
@@ -243,7 +245,7 @@ class ChatClientStream(ChatClient):
                                     tool_use_block.append({"toolUse":tool})
              
                             
-                            text_block = [{"text": text}] if text else []
+                            text_block = [{"text": text}] if text.strip() else []
                             assistant_message = {
                                 "role": "assistant",
                                 "content":   thinking_block+ tool_use_block + text_block if thinking_signature else text_block + tool_use_block
@@ -254,15 +256,24 @@ class ChatClientStream(ChatClient):
 
                             #append tooluse result
                             messages.append(tool_result_message)
+                            
+                            if only_n_most_recent_images:
+                                maybe_filter_to_n_most_recent_images(
+                                    messages,
+                                    only_n_most_recent_images,
+                                    min_removal_threshold=image_truncation_threshold,
+                            )
 
                             logger.info("Call new turn : %s" % messages)
                             # Start new stream with tool result
-                            response = bedrock_client.converse_stream(
-                               **requestParams
-                            )
+                            # response = bedrock_client.converse_stream(
+                            #    **requestParams
+                            # )
                             
                             # Reset tool state
                             current_tool_use = None
+                            
+                            continue
 
                         # normal chat finished
                         elif stop_reason in ['end_turn','max_tokens','stop_sequence']:
