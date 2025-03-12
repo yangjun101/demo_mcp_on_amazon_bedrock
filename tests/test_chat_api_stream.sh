@@ -4,6 +4,7 @@ curl http://127.0.0.1:7002/v1/chat/completions \
   -d '{
     "model": "amazon.nova-pro-v1:0",
     "mcp_server_ids":["db_sqlite","local_fs"],
+    "stream":true,
     "messages": [
       {
         "role": "user",

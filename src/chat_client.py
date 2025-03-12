@@ -11,6 +11,7 @@ import boto3
 from botocore.config import Config
 from dotenv import load_dotenv
 from mcp_client import MCPClient
+from utils import maybe_filter_to_n_most_recent_images
 
 load_dotenv()  # load environment variables from .env
 
@@ -72,12 +73,12 @@ class ChatClient:
 
         # get tools from mcp server
         tool_config = {"tools": []}
-        if mcp_clients is not None:
+        if mcp_clients is not None:        
             for mcp_server_id in mcp_server_ids:
                 tool_config_response = await mcp_clients[mcp_server_id].get_tool_config(server_id=mcp_server_id)
                 tool_config['tools'].extend(tool_config_response["tools"])
 
-        # logger.info(f"tool_config: {tool_config}")
+        logger.info(f"tool_config: {tool_config}")
         bedrock_client = self._get_bedrock_client()
         
         enable_thinking = extra_params.get('enable_thinking', False) and model_id in CLAUDE_37_SONNET_MODEL_ID
@@ -101,6 +102,8 @@ class ChatClient:
         )
         requestParams = {**requestParams, 'toolConfig': tool_config} if  tool_config['tools'] else requestParams
         
+        # logger.info(f"requestParams: {requestParams}")
+
         # invoke bedrock llm with user query
         response = bedrock_client.converse(
                     **requestParams
@@ -144,21 +147,32 @@ class ChatClient:
                         if mcp_client is None:
                             raise Exception(f"mcp_client is None, server_id:{server_id}")
                                     
-                        result = await mcp_client.call_tool(tool_name, tool_args)
+                        result = await mcp_client.call_tool(llm_tool_name, tool_args)
                         result_content = [{"text": "\n".join([x.text for x in result.content if x.type == 'text'])}]
-                        return {
-                            "toolUseId": tool['toolUseId'],
-                            "content": result_content
-                        }
+                        image_content =  [{"image":{"format":x.mimeType.replace('image/',''), "source":{"bytes":base64.b64decode(x.data)} } } for x in result.content if x.type == 'image']
+                        return  [{ 
+                                                "toolUseId": tool['toolUseId'],
+                                                "content": result_content+image_content
+                                            },
+                                            { 
+                                                "toolUseId": tool['toolUseId'],
+                                                "content": result_content
+                                }]
                     except Exception as err:
                         err_msg = f"{tool['name']} tool call is failed. error:{err}"
-                        return {
-                            "toolUseId": tool['toolUseId'],
-                            "content": [{"text": err_msg}],
-                            "status": 'error'
-                        }
+                        return [{
+                                                "toolUseId": tool['toolUseId'],
+                                                "content": [{"text": err_msg}],
+                                                "status": 'error'
+                                  }]*2
                 # 使用 asyncio.gather 并行执行所有工具调用
-                tool_results = await asyncio.gather(*[execute_tool_call(tool) for tool in tool_calls])
+                call_results = await asyncio.gather(*[execute_tool_call(tool) for tool in tool_calls])
+                tool_results = []
+                tool_text_results = []
+                for result in call_results:
+                    tool_results.append(result[0])
+                    tool_text_results.append(result[1])
+                logger.info(f'tool_text_results {tool_text_results}')
                 # 处理所有工具调用的结果
                 tool_results_content = []
                 for tool_result in tool_results:

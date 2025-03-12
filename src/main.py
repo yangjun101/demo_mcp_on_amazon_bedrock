@@ -31,7 +31,6 @@ from chat_client_stream import ChatClientStream
 from mcp.shared.exceptions import McpError
 
 chat_client = ChatClientStream()
-# mcp_client = MCPClient()
 mcp_clients = {}
 mcp_server_list = {}
 llm_model_list = {}
@@ -62,12 +61,12 @@ class ChatCompletionRequest(BaseModel):
     temperature: float = 0.5
     top_p: float = 0.9
     top_k: int = 50
-    extra_params : Optional[dict] = None
+    extra_params : Optional[dict] = {}
     stream: Optional[bool] = None
-    tools: Optional[List[dict]] = None
-    options: Optional[dict] = None
+    tools: Optional[List[dict]] = []
+    options: Optional[dict] = {}
     keep_alive: Optional[bool] = None
-    mcp_server_ids: Optional[List[str]] = None
+    mcp_server_ids: Optional[List[str]] = []
 
 class ChatResponse(BaseModel):
     id: str
