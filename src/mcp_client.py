@@ -119,9 +119,10 @@ class MCPClient:
                 raise ValueError("Server command must be in the npx/uvx/node/python/docker")
 
         env = get_default_environment()
-        env['AWS_ACCESS_KEY_ID'] = self.env['AWS_ACCESS_KEY_ID']
-        env['AWS_SECRET_ACCESS_KEY'] = self.env['AWS_SECRET_ACCESS_KEY']
-        env['AWS_REGION'] = self.env['AWS_REGION']
+        if self.env['AWS_ACCESS_KEY_ID'] and self.env['AWS_ACCESS_KEY_ID']:
+            env['AWS_ACCESS_KEY_ID'] =  self.env['AWS_ACCESS_KEY_ID']
+            env['AWS_SECRET_ACCESS_KEY'] = self.env['AWS_SECRET_ACCESS_KEY']
+            env['AWS_REGION'] = self.env['AWS_REGION']
         env.update(server_script_envs)
 
         server_params = StdioServerParameters(

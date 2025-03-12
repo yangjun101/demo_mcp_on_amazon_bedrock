@@ -29,19 +29,30 @@ class ChatClient:
         }
 
     def _get_bedrock_client(self, runtime=True):
-        bedrock_client = boto3.client(
-            service_name='bedrock-runtime' if runtime else 'bedrock',
-            aws_access_key_id=self.env['AWS_ACCESS_KEY_ID'],
-            aws_secret_access_key=self.env['AWS_SECRET_ACCESS_KEY'],
-            region_name=self.env['AWS_REGION'],
-            config=Config(
-                retries={
-                    "max_attempts": 3,
-                    "mode": "standard",
-                },
-                read_timeout=300,
+        if self.env['AWS_ACCESS_KEY_ID'] and self.env['AWS_SECRET_ACCESS_KEY']:
+            bedrock_client = boto3.client(
+                service_name='bedrock-runtime' if runtime else 'bedrock',
+                aws_access_key_id=self.env['AWS_ACCESS_KEY_ID'],
+                aws_secret_access_key=self.env['AWS_SECRET_ACCESS_KEY'],
+                region_name=self.env['AWS_REGION'],
+                config=Config(
+                    retries={
+                        "max_attempts": 3,
+                        "mode": "standard",
+                    },
+                    read_timeout=300,
+                )
             )
-        )
+        else:
+            bedrock_client = boto3.client(
+                service_name='bedrock-runtime' if runtime else 'bedrock',
+                config=Config(
+                    retries={
+                        "max_attempts": 3,
+                        "mode": "standard",
+                    },
+                    read_timeout=300,
+                ))
 
         return bedrock_client
     
