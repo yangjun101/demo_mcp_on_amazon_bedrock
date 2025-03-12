@@ -145,7 +145,7 @@ class ChatClientStream(ChatClient):
                                 delay = self.exponential_backoff(attempt)
                                 msg = f"Throttling exception encountered. Retrying in {delay:.2f} seconds (attempt {attempt+1}/{self.max_retries})\n"
                                 logger.warning(msg)
-                                yield {"type": "error", "data": {"error":msg}}
+                                # yield {"type": "error", "data": {"error":msg}}
 
                                 time.sleep(delay)
                                 attempt += 1
