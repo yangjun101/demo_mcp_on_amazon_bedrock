@@ -47,9 +47,9 @@ source .venv/bin/activate
 项目配置写入 `.env` 文件，应包含以下配置项（建议拷贝 `env_dev` 在其基础上修改）：
 
 ```
-AWS_ACCESS_KEY_ID=<your-access-key>
-AWS_SECRET_ACCESS_KEY=<your-secret-key>
-AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=(可选)<your-access-key>
+AWS_SECRET_ACCESS_KEY=(可选)<your-secret-key>
+AWS_REGION=<your-region>
 LOG_DIR=./logs
 CHATBOT_SERVICE_PORT=<chatbot-ui-service-port>
 MCP_SERVICE_HOST=127.0.0.1
