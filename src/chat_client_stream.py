@@ -15,18 +15,27 @@ from chat_client import ChatClient
 import base64
 from mcp_client import MCPClient
 from utils import maybe_filter_to_n_most_recent_images
-
+from botocore.exceptions import ClientError
+import random
+import time
 load_dotenv()  # load environment variables from .env
 logger = logging.getLogger(__name__)
 CLAUDE_37_SONNET_MODEL_ID = 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'
 
+
 class ChatClientStream(ChatClient):
     """Extended ChatClient with streaming support"""
+    
+    def __init__(self):
+        super().__init__()
+        self.max_retries = 10 # Maximum number of retry attempts
+        self.base_delay = 10 # Initial backoff delay in seconds
+        self.max_delay = 60 # Maximum backoff delay in seconds
 
     async def _process_stream_response(self, response) -> AsyncIterator[Dict]:
         """Process the raw response from converse_stream"""
         for event in response['stream']:
-            # logger.info(event)
+            # logger.infos(event)
             # Handle message start
             if "messageStart" in event:
                 yield {"type": "message_start", "data": event["messageStart"]}
@@ -58,7 +67,13 @@ class ChatClientStream(ChatClient):
             if "metadata" in event:
                 yield {"type": "metadata", "data": event["metadata"]}
                 continue
-
+            
+    def exponential_backoff(self, attempt):
+        """Calculate exponential backoff delay with jitter"""
+        delay = min(self.max_delay, self.base_delay * (2 ** attempt))
+        jitter = random.uniform(0, 0.1 * delay)  # 10% jitter
+        return delay + jitter
+    
     async def process_query_stream(self, query: str = "",
             model_id="amazon.nova-lite-v1:0", max_tokens=1024, max_turns=30,temperature=0.1,
             history=[], system=[],mcp_clients=None, mcp_server_ids=[],extra_params={}) -> AsyncGenerator[Dict, None]:
@@ -116,9 +131,30 @@ class ChatClientStream(ChatClient):
             thinking_signature = ''
             # invoke bedrock llm with user query
             try:
-                response = bedrock_client.converse_stream(
-                    **requestParams
-                )
+                attempt = 0
+                while attempt <= self.max_retries:
+                    try:
+                        response = bedrock_client.converse_stream(
+                            **requestParams
+                        )
+                        break
+                    except ClientError as error:
+                        logger.info(str(error))
+                        if error.response['Error']['Code'] == 'ThrottlingException':
+                            if attempt < self.max_retries:
+                                delay = self.exponential_backoff(attempt)
+                                msg = f"Throttling exception encountered. Retrying in {delay:.2f} seconds (attempt {attempt+1}/{self.max_retries})\n"
+                                logger.warning(msg)
+                                yield {"type": "error", "data": {"error":msg}}
+
+                                time.sleep(delay)
+                                attempt += 1
+                            else:
+                                logger.error(f"Maximum retry attempts ({self.max_retries}) reached. Throttling persists.")
+                                raise Exception("Maximum retry attempts reached. Service is still throttling requests.")
+                        else:
+                            raise error
+
                 turn_i += 1
                 # 收集所有需要调用的工具请求
                 tool_calls = []
@@ -265,10 +301,6 @@ class ChatClientStream(ChatClient):
                             )
 
                             logger.info("Call new turn : %s" % messages)
-                            # Start new stream with tool result
-                            # response = bedrock_client.converse_stream(
-                            #    **requestParams
-                            # )
                             
                             # Reset tool state
                             current_tool_use = None
