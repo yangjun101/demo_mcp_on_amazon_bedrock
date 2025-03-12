@@ -72,7 +72,7 @@ class ChatClient:
 
         # get tools from mcp server
         tool_config = {"tools": []}
-        if mcp_client is not None:
+        if mcp_clients is not None:
             for mcp_server_id in mcp_server_ids:
                 tool_config_response = await mcp_clients[mcp_server_id].get_tool_config(server_id=mcp_server_id)
                 tool_config['tools'].extend(tool_config_response["tools"])
@@ -115,7 +115,7 @@ class ChatClient:
         if stop_reason == 'end_turn':
             # normal chat finished
             yield output_message
-        elif stop_reason == 'tool_use' and mcp_client is not None:
+        elif stop_reason == 'tool_use' and mcp_clients is not None:
             # return tool request use
             yield output_message
             # multi-loop tool calling
