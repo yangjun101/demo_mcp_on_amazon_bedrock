@@ -123,7 +123,7 @@ class ChatClientStream(ChatClient):
                     inferenceConfig=inferenceConfig,
                     additionalModelRequestFields = additionalModelRequestFields
         )
-        requestParams = {**requestParams, 'toolConfig': tool_config} if tool_config else requestParams
+        requestParams = {**requestParams, 'toolConfig': tool_config} if tool_config['tools'] else requestParams
 
         while turn_i <= max_turns and stop_reason != 'end_turn':
             text = ''

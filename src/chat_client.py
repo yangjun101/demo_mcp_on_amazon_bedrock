@@ -88,7 +88,7 @@ class ChatClient:
                     inferenceConfig=inferenceConfig,
                     additionalModelRequestFields = additionalModelRequestFields
         )
-        requestParams = {**requestParams, 'toolConfig': tool_config} if tool_config else requestParams
+        requestParams = {**requestParams, 'toolConfig': tool_config} if  tool_config['tools'] else requestParams
         
         # invoke bedrock llm with user query
         response = bedrock_client.converse(
