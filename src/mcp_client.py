@@ -91,13 +91,14 @@ class MCPClient:
             # run via script
             is_python = server_script_path.endswith('.py')
             is_js = server_script_path.endswith('.js')
-            is_uv = server_script_path.startswith('uvx:')
+            is_uvx = server_script_path.startswith('uvx:')
             is_np = server_script_path.startswith('npx:')
             is_docker = server_script_path.startswith('docker:')
+            is_uv = server_script_path.startswith('uv:')
 
-            if not (is_python or is_js or is_uv or is_np or is_docker):
+            if not (is_python or is_js or is_uv or is_np or is_docker or is_uvx):
                 raise ValueError("Server script must be a .py or .js file or package")
-            if is_uv or is_np:
+            if is_uv or is_np or is_uvx:
                 server_script_path = server_script_path[server_script_path.index(':')+1:]
 
             server_script_args = [server_script_path] + server_script_args
@@ -105,6 +106,8 @@ class MCPClient:
             if is_python:
                 command = "python"
             elif is_uv:
+                command = "uv"
+            elif is_uvx:
                 command = "uvx"
             elif is_np:
                 command = "npx"
@@ -115,8 +118,8 @@ class MCPClient:
                 command = "docker"
         else:
             # run via command
-            if command not in ["npx", "uvx", "node", "python","docker"]:
-                raise ValueError("Server command must be in the npx/uvx/node/python/docker")
+            if command not in ["npx", "uvx", "node", "python","docker","uv",]:
+                raise ValueError("Server command must be in the npx/uvx/node/python/docker/uv")
 
         env = get_default_environment()
         if self.env['AWS_ACCESS_KEY_ID'] and self.env['AWS_ACCESS_KEY_ID']:
