@@ -79,7 +79,7 @@ class ChatResponse(BaseModel):
 class AddMCPServerRequest(BaseModel):
     server_id: str = ''
     server_desc: str
-    command: Literal["npx", "uvx", "node", "python","docker"] = Field(default='npx')
+    command: Literal["npx", "uvx", "node", "python","docker","uv"] = Field(default='npx')
     args: List[str] = []
     env: Optional[Dict[str, str]] = Field(default_factory=dict) 
     config_json: Dict[str,Any] = Field(default_factory=dict)

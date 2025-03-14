@@ -17,7 +17,7 @@ API_KEY = os.environ.get("API_KEY")
 
 logging.basicConfig(level=logging.INFO)
 mcp_base_url = os.environ.get('MCP_BASE_URL')
-mcp_command_list = ["uvx", "npx", "node", "python","docker"]
+mcp_command_list = ["uvx", "npx", "node", "python","docker","uv"]
 
 def request_list_models():
     url = mcp_base_url.rstrip('/') + '/v1/list/models'
