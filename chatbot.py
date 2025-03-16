@@ -13,6 +13,8 @@ import streamlit as st
 import base64
 import uuid
 from io import BytesIO
+from streamlit_local_storage import LocalStorage
+
 from dotenv import load_dotenv
 load_dotenv() # load env vars from .env
 API_KEY = os.environ.get("API_KEY")
@@ -21,41 +23,33 @@ logging.basicConfig(level=logging.INFO)
 mcp_base_url = os.environ.get('MCP_BASE_URL')
 mcp_command_list = ["uvx", "npx", "node", "python","docker","uv"]
 COOKIE_NAME = "mcp_chat_user_id"
-local_storage = 'login_log.json'
+local_storage = LocalStorage()
 # 用户会话管理
 def initialize_user_session():
     """初始化用户会话，确保每个用户有唯一标识符"""    
     # 尝试从cookie中获取用户ID
     if "user_id" not in st.session_state:
-        #check if local_storage file exist
-        if os.path.exists(local_storage):
-            with open(local_storage, 'r') as f:
-                cookie_controller = json.load(f)
-                user_id_from_cookie = cookie_controller.get(COOKIE_NAME)
-                if user_id_from_cookie:
-                    st.session_state.user_id = user_id_from_cookie
-                    logging.info(f"从Cookie读取用户ID: {st.session_state.user_id}")
-                    return
+        if local_storage and local_storage.getItem(COOKIE_NAME):
+            st.session_state.user_id = local_storage.getItem(COOKIE_NAME)
+            logging.info(f"读取用户ID: {st.session_state.user_id}")
+            return
         else:
             # 生成新的用户ID
             st.session_state.user_id = str(uuid.uuid4())[:8]
-            # 保存到cookie
-            with open(local_storage, 'w') as f:
-                json.dump({COOKIE_NAME: st.session_state.user_id}, f)
-            logging.info(f"初始化新用户ID: {st.session_state.user_id}")
+            # 保存到LocalStorage
+            local_storage.setItem(COOKIE_NAME, st.session_state.user_id)
     
 # 生成随机用户ID的函数
 def generate_random_user_id():
     st.session_state.user_id = str(uuid.uuid4())[:8]
     # 更新cookie
-    cookie_controller.set(COOKIE_NAME, st.session_state.user_id)
+    local_storage.setItem(COOKIE_NAME, st.session_state.user_id)
     logging.info(f"生成新的随机用户ID: {st.session_state.user_id}")
     
 # 当用户手动更改ID时保存到cookie
 def save_user_id():
     st.session_state.user_id = st.session_state.user_id_input
-    with open(local_storage, 'w') as f:
-        json.dump({COOKIE_NAME: st.session_state.user_id}, f)
+    local_storage.setItem(COOKIE_NAME, st.session_state.user_id)
     logging.info(f"保存用户ID: {st.session_state.user_id}")
 
 initialize_user_session()
