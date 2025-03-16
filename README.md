@@ -20,10 +20,7 @@
 - 将MCP能力和客户端的解耦，MCP能力封装在服务端，对外提供API服务，且chat接口兼容openai，方便接入其他chat客户端
 ![alt text](./docs/image_api.png)
 - 前后端分离，MCP Client和MCP Server均可以部署到服务器端，用户可以直接使用web浏览器通过后端web服务交互，从而访问LLM和MCP Sever能力和资源  
-- 1. 时序图1:使用Search API 的 MCP Server  
-![alt text](docs/image-seq1.png)  
-- 2. 时序图1:使用Headless Browser 的 MCP Server 
-![alt text](docs/image-seq2.png)  
+- 支持多用户，用户session隔离，支持并发访问。
 
 
 ## 1. 依赖安装
@@ -212,6 +209,9 @@ system prompt输入：`when you use mcp browser, If you need to visit search eng
 输入任务：`我想要一份特斯拉股票的全面分析，包括：概述：公司概况、关键指标、业绩数据和投资建议财务数据：收入趋势、利润率、资产负债表和现金流分析市场情绪：分析师评级、情绪指标和新闻影响技术分析：价格趋势、技术指标和支撑/阻力水平资产比较：市场份额和与主要竞争对手的财务指标对比价值投资者：内在价值、增长潜力和风险因素投资论点：SWOT 分析和针对不同类型投资者的建议。 并制作成精美的HTML保存到本地目录中。 你可以使用mcp-browser和exa search去获取尽可能丰富的实时数据和图片。`   
 [最终输出文件示例](docs/tesla_stock_analysis.html)  
 
+- **时序图1:使用Headless Browser 的 MCP Server**
+![alt text](docs/image-seq2.png)  
+
 ### 5.2 使用MCP Computer Use 操作 EC2 remote desktop
 - 在另外一个目录中安装下载remote-computer-use
 ```bash
@@ -262,6 +262,10 @@ you have capability:
 </IMPORTANT>
 ```
 
+- **时序图:使用Computer Use 操作 EC2 Remote Desktop**  
+![alt text](docs/image-seq3.png)
+
+
 ### 5.3.使用Sequential Thinking + Search 做 Deep Research (主要针对Nova/Claude 3.5模型, Claude 3.7不需要)
 - 同时启用 websearch(参考上面的EXA配置)和 [Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)，目前已经预置了Sequential Thinking MCP Server在配置文件中, 启动后可以看到server名称是cot。  
 ![alt text](docs/image-serverlist.png)
@@ -278,6 +282,8 @@ you have capability:
 ![alt text](docs/image_deepresearch_1.png)
 ![alt text](docs/image_deepresearch_2.png)
 
+- **时序图:使用Search API 的 MCP Server**  
+![alt text](docs/image-seq1.png)  
 
 ###  5.3. 使用Amazon Knowledge Base
 先在Bedrock console中创建或者使用已有的Bedrock，记下Knowledge Base Id  
