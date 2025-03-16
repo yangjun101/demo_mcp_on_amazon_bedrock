@@ -10,22 +10,63 @@ import html
 import logging
 import requests
 import streamlit as st
+import base64
+import uuid
+from io import BytesIO
+from streamlit_local_storage import LocalStorage
+
 from dotenv import load_dotenv
 load_dotenv() # load env vars from .env
 API_KEY = os.environ.get("API_KEY")
 
-
 logging.basicConfig(level=logging.INFO)
 mcp_base_url = os.environ.get('MCP_BASE_URL')
 mcp_command_list = ["uvx", "npx", "node", "python","docker","uv"]
+COOKIE_NAME = "mcp_chat_user_id"
+local_storage = LocalStorage()
+# 用户会话管理
+def initialize_user_session():
+    """初始化用户会话，确保每个用户有唯一标识符"""    
+    # 尝试从cookie中获取用户ID
+    if "user_id" not in st.session_state:
+        if local_storage and local_storage.getItem(COOKIE_NAME):
+            st.session_state.user_id = local_storage.getItem(COOKIE_NAME)
+            logging.info(f"读取用户ID: {st.session_state.user_id}")
+            return
+        else:
+            # 生成新的用户ID
+            st.session_state.user_id = str(uuid.uuid4())[:8]
+            # 保存到LocalStorage
+            local_storage.setItem(COOKIE_NAME, st.session_state.user_id)
+    
+# 生成随机用户ID的函数
+def generate_random_user_id():
+    st.session_state.user_id = str(uuid.uuid4())[:8]
+    # 更新cookie
+    local_storage.setItem(COOKIE_NAME, st.session_state.user_id)
+    logging.info(f"生成新的随机用户ID: {st.session_state.user_id}")
+    
+# 当用户手动更改ID时保存到cookie
+def save_user_id():
+    st.session_state.user_id = st.session_state.user_id_input
+    local_storage.setItem(COOKIE_NAME, st.session_state.user_id)
+    logging.info(f"保存用户ID: {st.session_state.user_id}")
+
+initialize_user_session()
+    
+def get_auth_headers():
+    """构建包含用户身份的认证头"""
+    headers = {
+        'Authorization': f'Bearer {API_KEY}',
+        'X-User-ID': st.session_state.user_id  # 添加用户ID头
+    }
+    return headers
 
 def request_list_models():
     url = mcp_base_url.rstrip('/') + '/v1/list/models'
     models = []
     try:
-        response = requests.get(url,headers={
-                        'Authorization': f'Bearer {API_KEY}'
-                    })
+        response = requests.get(url, headers=get_auth_headers())
         data = response.json()
         models = data.get('models', [])
     except Exception as e:
@@ -36,16 +77,14 @@ def request_list_mcp_servers():
     url = mcp_base_url.rstrip('/') + '/v1/list/mcp_server'
     mcp_servers = []
     try:
-        response = requests.get(url,headers={
-                        'Authorization': f'Bearer {API_KEY}'
-                    })
+        response = requests.get(url, headers=get_auth_headers())
         data = response.json()
         mcp_servers = data.get('servers', [])
     except Exception as e:
         logging.error('request list mcp servers error: %s' % e)
     return mcp_servers
 
-def request_add_mcp_server( server_id, server_name, command, args=[], env=None,config_json={}):
+def request_add_mcp_server(server_id, server_name, command, args=[], env=None, config_json={}):
     url = mcp_base_url.rstrip('/') + '/v1/add/mcp_server'
     status = False
     try:
@@ -54,13 +93,11 @@ def request_add_mcp_server( server_id, server_name, command, args=[], env=None,c
             "server_desc": server_name,
             "command": command,
             "args": args,
-            "config_json":config_json
+            "config_json": config_json
         }
         if env:
             payload["env"] = env
-        response = requests.post(url, json=payload,headers={
-                        'Authorization': f'Bearer {API_KEY}'
-                    })
+        response = requests.post(url, json=payload, headers=get_auth_headers())
         data = response.json()
         status = data['errno'] == 0
         msg = data['msg']
@@ -72,7 +109,6 @@ def request_add_mcp_server( server_id, server_name, command, args=[], env=None,c
 def process_stream_response(response):
     """Process streaming response and yield content chunks"""
     for line in response.iter_lines():
-        # logging.info(f"line:{line}")
         if line:
             line = line.decode('utf-8')
             if line.startswith('data: '):
@@ -96,7 +132,7 @@ def process_stream_response(response):
                 except Exception as e:
                     logging.error(f"Error processing stream: {e}")
 
-def request_chat(messages, model_id, mcp_server_ids, stream=False,max_tokens=1024, temperature=0.6,extra_params = {}):
+def request_chat(messages, model_id, mcp_server_ids, stream=False, max_tokens=1024, temperature=0.6, extra_params={}):
     url = mcp_base_url.rstrip('/') + '/v1/chat/completions'
     msg, msg_extras = 'something is wrong!', {}
     try:
@@ -105,58 +141,59 @@ def request_chat(messages, model_id, mcp_server_ids, stream=False,max_tokens=102
             'model': model_id,
             'mcp_server_ids': mcp_server_ids,
             'extra_params': extra_params,
-            'stream': stream ,
-            'temperature':temperature,
-            'max_tokens':max_tokens
+            'stream': stream,
+            'temperature': temperature,
+            'max_tokens': max_tokens
         }
-        logging.info('request payload: %s' % payload)
+        logging.info(f'用户 {st.session_state.user_id} 请求payload: %s' % payload)
+        
         if stream:
-            # Make streaming request
-            response = requests.post(url, 
-                                    json=payload,
-                                    stream=True,
-                                    headers={
-                                        'Authorization': f'Bearer {API_KEY}',
-                                        'Accept': 'text/event-stream' 
-                                    })
+            # 流式请求
+            headers = get_auth_headers()
+            headers['Accept'] = 'text/event-stream'  
+            response = requests.post(url, json=payload, stream=True, headers=headers)
+            
             if response.status_code == 200:
                 return response, {}
             else:
                 msg = 'An error occurred when calling the Converse operation: The system encountered an unexpected error during processing. Try your request again.'
-                logging.error('request chat error: %d' % response.status_code)
+                logging.error(f'用户 {st.session_state.user_id} 请求聊天错误: %d' % response.status_code)
         else:
-            # Make request
-            response = requests.post(url, json=payload,headers={
-                        'Authorization': f'Bearer {API_KEY}'
-                    })
+            # 常规请求
+            response = requests.post(url, json=payload, headers=get_auth_headers())
             data = response.json()
             msg = data['choices'][0]['message']['content']
             msg_extras = data['choices'][0]['message_extras']
 
     except Exception as e:
         msg = 'An error occurred when calling the Converse operation: The system encountered an unexpected error during processing. Try your request again.'
-        logging.error('request chat error: %s' % e)
-    logging.info('response msg: %s' % msg)
+        logging.error(f'用户 {st.session_state.user_id} 请求聊天错误: %s' % e)
+    
+    logging.info(f'用户 {st.session_state.user_id} 响应消息: %s' % msg)
     return msg, msg_extras
 
-# st session state
+# 初始化会话状态
 if not 'model_names' in st.session_state:
     st.session_state.model_names = {}
-for x in request_list_models():
-    st.session_state.model_names[x['model_name']] = x['model_id']
+    for x in request_list_models():
+        st.session_state.model_names[x['model_name']] = x['model_id']
 
 if not 'mcp_servers' in st.session_state:
     st.session_state.mcp_servers = {}
-for x in request_list_mcp_servers():
-    st.session_state.mcp_servers[x['server_name']] = x['server_id']
+    for x in request_list_mcp_servers():
+        st.session_state.mcp_servers[x['server_name']] = x['server_id']
 
 if "system_prompt" not in st.session_state:
-    st.session_state.system_prompt = ""
+    st.session_state.system_prompt = "You are a deep researcher"
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "system", "content": st.session_state.system_prompt},
-    ]
+    st.session_state.messages = []
+    
+# 消息列表始终保持与当前system_prompt同步
+if not st.session_state.messages or st.session_state.messages[0]["role"] != "system":
+    st.session_state.messages.insert(0, {"role": "system", "content": st.session_state.system_prompt})
+else:
+    st.session_state.messages[0]["content"] = st.session_state.system_prompt 
 
 if "enable_stream" not in st.session_state:
     st.session_state.enable_stream = True
@@ -164,8 +201,8 @@ if "enable_stream" not in st.session_state:
 if "enable_thinking" not in st.session_state:
     st.session_state.enable_thinking = False
 
-    
 
+    
 # Function to clear conversation history
 def clear_conversation():
     st.session_state.messages = [
@@ -204,7 +241,7 @@ def add_new_mcp_server_handle():
             if "mcpServers" in config_json:
                 config_json = config_json["mcpServers"]
             #直接使用json配置里的id
-            logging.info(f'add new mcp server: {config_json}')
+            logging.info(f'用户 {st.session_state.user_id} 添加新MCP服务器: {config_json}')
             server_id = list(config_json.keys())[0]
             server_cmd = config_json[server_id]["command"]
             server_args = config_json[server_id]["args"]
@@ -212,7 +249,7 @@ def add_new_mcp_server_handle():
         except Exception as e:
             status, msg = False, "The config must be a valid JSON."
 
-    if  not re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', server_id):
+    if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', server_id):
         status, msg = False, "The server id must be a valid variable name!"
     elif server_id in st.session_state.mcp_servers.values():
         status, msg = False, "The server id exists, try another one!"
@@ -228,14 +265,14 @@ def add_new_mcp_server_handle():
         except Exception as e:
             server_env = {}
             status, msg = False, "The server env must be a JSON dict[str, str]."
-    if isinstance(server_args,str):
+    if isinstance(server_args, str):
         server_args = [x.strip() for x in server_args.split(' ') if x.strip()]
 
-    logging.info(f'add new mcp server: {server_id} :{server_name}')
+    logging.info(f'用户 {st.session_state.user_id} 添加新MCP服务器: {server_id}:{server_name}')
     
     with st.spinner('Add the server...'):
         status, msg = request_add_mcp_server(server_id, server_name, server_cmd, 
-                                             args=server_args, env=server_env,config_json = config_json)
+                                             args=server_args, env=server_env, config_json=config_json)
     if status:
         st.session_state.mcp_servers[server_name] = server_id
 
@@ -269,7 +306,7 @@ def add_new_mcp_server():
                                             value="", placeholder="Name description of server", key="new_mcp_server_name")
         
         new_mcp_server_config_json = st.text_area("使用JSON配置", 
-                                    height = 128,
+                                    height=128,
                                     value="", key="new_mcp_server_json_config",
                                     placeholder="需要提供一个有效的JSON字典")
         with st.expander(label='输入字段配置', expanded=False):
@@ -289,8 +326,18 @@ def add_new_mcp_server():
                                           on_click=add_new_mcp_server_handle,
                                           disabled=False)
 
+def on_system_prompt_change():
+    if st.session_state.messages[0]["role"] == "system":
+        st.session_state.messages[0]["content"] = st.session_state.system_prompt
+        
 # UI
 with st.sidebar:
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.session_state.user_id = st.text_input('User ID', key='user_id_input',value=st.session_state.user_id,on_change=save_user_id, max_chars=32)
+    with col2:
+        st.button("🔄", on_click=generate_random_user_id, help="生成随机用户ID")
+
     llm_model_name = st.selectbox('Model List',
                                   list(st.session_state.model_names.keys()))
     st.session_state.max_tokens = st.number_input('Max output token',
@@ -304,6 +351,7 @@ with st.sidebar:
     st.session_state.system_prompt = st.text_area('System',
                                 value=st.session_state.system_prompt,
                                 height=100,
+                                on_change=on_system_prompt_change,
                                 )
     st.session_state.enable_thinking = st.toggle('Thinking', value=False)
 
@@ -322,7 +370,6 @@ st.title("💬 Bedrock Chatbot with MCP")
 # Display chat messages
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
-
 
 # Handle user input
 if prompt := st.chat_input():
@@ -346,9 +393,9 @@ if prompt := st.chat_input():
                         mcp_server_ids, stream=st.session_state.enable_stream,
                         max_tokens=st.session_state.max_tokens,
                         temperature=st.session_state.temperature, extra_params={
-                            "only_n_most_recent_images":st.session_state.only_n_most_recent_images,
-                            "budget_tokens":st.session_state.budget_tokens,
-                            "enable_thinking":st.session_state.enable_thinking
+                            "only_n_most_recent_images": st.session_state.only_n_most_recent_images,
+                            "budget_tokens": st.session_state.budget_tokens,
+                            "enable_thinking": st.session_state.enable_thinking
                         }
                     )
         # Get streaming response
@@ -360,7 +407,7 @@ if prompt := st.chat_input():
                 thinking_content = ""  # 添加变量存储累积的thinking内容
                 thinking_expander = None  # 用于存储thinking的expander对象
                 for content in process_stream_response(response):
-                    logging.info(f"content block idx:{content_block_idx}")
+                    # logging.info(f"content block idx:{content_block_idx}")
                     content_block_idx += 1
                     full_response += content
                     thk_msg, res_msg, tool_msg = "", "", ""
@@ -393,8 +440,12 @@ if prompt := st.chat_input():
                                         st.json(tool_block)
                                 else:
                                     with st.expander(f"Tool Result:{tool_count}"):
+                                        images_data = [BytesIO(base64.b64decode(block['image']['source']['base64']))
+                                                        for block in tool_block['content'] if 'image' in block]
                                         st.json(tool_block)
                                         tool_count += 1
+                                        for image_data in images_data:
+                                            st.image(image_data)
 
                     # Update response in real-time
                     response_placeholder.markdown(full_response + "▌")
@@ -407,9 +458,8 @@ if prompt := st.chat_input():
                 full_response = response
         else:
             tool_msg = ""
-            if True or st.session_state.enable_mcp_result == 'Y':
-                if msg_extras.get('tool_use', []):
-                    tool_msg = f"```\n{json.dumps(msg_extras.get('tool_use', []), indent=4,ensure_ascii=False)}\n```"
+            if msg_extras.get('tool_use', []):
+                tool_msg = f"```\n{json.dumps(msg_extras.get('tool_use', []), indent=4,ensure_ascii=False)}\n```"
             thk_msg, res_msg = "", ""
             thk_regex = r"<thinking>(.*?)</thinking>"
             thk_m = re.search(thk_regex, response, re.DOTALL)

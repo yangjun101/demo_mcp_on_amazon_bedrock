@@ -67,9 +67,10 @@ CHATBOT_SERVICE_PORT=<chatbot-ui-service-port>
 MCP_SERVICE_HOST=127.0.0.1
 MCP_SERVICE_PORT=<bedrock-mcp-service-port>
 API_KEY=<your-new-api-key>
+MAX_TURNS=100
 ```
 
-备注：该项目用到 **AWS Bedrock Nova** 系列大模型，因此需要注册并获取以上服务访问密钥。
+备注：该项目用到 **AWS Bedrock Nova/Claude** 系列模型，因此需要注册并获取以上服务访问密钥。
 
 ## 3. 运行
 
@@ -111,6 +112,7 @@ bash start_all.sh
 curl http://127.0.0.1:7002/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer 123456" \
+  -H "X-User-ID: user123" \
   -d '{
     "model": "us.amazon.nova-pro-v1:0",
     "mcp_server_ids":["local_fs"],
@@ -210,9 +212,57 @@ system prompt输入：`when you use mcp browser, If you need to visit search eng
 输入任务：`我想要一份特斯拉股票的全面分析，包括：概述：公司概况、关键指标、业绩数据和投资建议财务数据：收入趋势、利润率、资产负债表和现金流分析市场情绪：分析师评级、情绪指标和新闻影响技术分析：价格趋势、技术指标和支撑/阻力水平资产比较：市场份额和与主要竞争对手的财务指标对比价值投资者：内在价值、增长潜力和风险因素投资论点：SWOT 分析和针对不同类型投资者的建议。 并制作成精美的HTML保存到本地目录中。 你可以使用mcp-browser和exa search去获取尽可能丰富的实时数据和图片。`   
 [最终输出文件示例](docs/tesla_stock_analysis.html)  
 
+### 5.2 使用MCP Computer Use 操作 EC2 remote desktop
+- 在另外一个目录中安装下载remote-computer-use
+```bash
+git clone https://github.com/xiehust/sample-mcp-servers.git
+```
+- 需要提前安装一台EC2实例，并配置VNC远程桌面。安装步骤请参考[说明](https://github.com/xiehust/sample-mcp-servers/blob/main/remote_computer_use/README.md)
+- 环境配置好之后，在MCP demo客户端配置如下：
+```json
+{
+    "mcpServers": {
+        "computer_use": {
+            "command": "uv",
+            "env": {
+                "VNC_HOST":"",
+                "VNC_PORT":"5901",
+                "VNC_USERNAME":"ubuntu",
+                "VNC_PASSWORD":"",
+                "PEM_FILE":"",
+                "SSH_PORT":"22",
+                "DISPLAY_NUM":"1"
+            },
+            "args": [
+                "--directory",
+                "/absolute_path_to/remote_computer_use",
+                "run",
+                "server_claude.py"
+            ]
+        }
+    }
+}
+```
+- 使用Computer Use推荐用Claude 3.7模型，并添加如下system prompt
+```
+You are a computer agent, you can actually operate a vitural computer. 
+you have capability:
+<SYSTEM_CAPABILITY>
+* You are utilising an Ubuntu virtual machine using Linux architecture with internet access.
+* You can feel free to install Ubuntu applications with your bash tool. Use curl instead of wget.
+* When viewing a page it can be helpful to zoom out so that you can see everything on the page.  Either that, or make sure you scroll down to see everything before deciding something isn't available.
+* When using your computer function calls, they take a while to run and send back to you.  Where possible/feasible, try to chain multiple of these calls all into one function calls request.
+</SYSTEM_CAPABILITY>
 
+<IMPORTANT>
+* Don't assume an application's coordinates are on the screen unless you saw the screenshot. To open an application, please take screenshot first and then find out the coordinates of the application icon. 
+* When using Firefox, if a startup wizard or Firefox Privacy Notice appears, IGNORE IT.  Do not even click "skip this step".  Instead, click on the address bar where it says "Search or enter address", and enter the appropriate search term or URL there.
+* If the item you are looking at is a pdf, if after taking a single screenshot of the pdf it seems that you want to read the entire document instead of trying to continue to read the pdf from your screenshots + navigation, determine the URL, use curl to download the pdf, install and use pdftotext to convert it to a text file, and then read that text file directly with your StrReplaceEditTool.
+* After each step, take a screenshot and carefully evaluate if you have achieved the right outcome. Explicitly show your thinking: "I have evaluated step X..." If not correct, try again. Only when you confirm a step was executed correctly should you move on to the next one.
+</IMPORTANT>
+```
 
-### 5.2.开启Deep Research
+### 5.3.使用Sequential Thinking + Search 做 Deep Research (主要针对Nova/Claude 3.5模型, Claude 3.7不需要)
 - 同时启用 websearch(参考上面的EXA配置)和 [Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)，目前已经预置了Sequential Thinking MCP Server在配置文件中, 启动后可以看到server名称是cot。  
 ![alt text](docs/image-serverlist.png)
 - Sequential Thinking提供通过动态的结构化思维过程和反思，通过工具调用的促使模型按工具输入的要求进行结构化输出推理链条。
