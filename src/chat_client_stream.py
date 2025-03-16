@@ -94,7 +94,7 @@ class ChatClientStream(ChatClient):
             for mcp_server_id in mcp_server_ids:
                 tool_config_response = await mcp_clients[mcp_server_id].get_tool_config(server_id=mcp_server_id)
                 tool_config['tools'].extend(tool_config_response["tools"])
-
+        logger.info(f"Tool config: {tool_config}")
         bedrock_client = self._get_bedrock_client()
         
         # Track the current tool use state

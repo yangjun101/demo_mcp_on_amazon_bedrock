@@ -34,13 +34,14 @@ from chat_client_stream import ChatClientStream
 from mcp.shared.exceptions import McpError
 
 # 全局模型和服务器配置
+load_dotenv()  # load env vars from .env
 llm_model_list = {}
 shared_mcp_server_list = {}  # 共享的MCP服务器描述信息
 global_mcp_server_configs = {}  # 全局MCP服务器配置 server_id -> config
 user_mcp_server_configs = {}  # 用户特有的MCP服务器配置 user_id -> {server_id: config}
-MAX_TURNS = 50
-INACTIVE_TIME = 60*24 #mins
-load_dotenv()  # load env vars from .env
+MAX_TURNS = int(os.environ.get("MAX_TURNS",50))
+INACTIVE_TIME = int(os.environ.get("INACTIVE_TIME",60*24))  #mins
+
 
 API_KEY = os.environ.get("API_KEY")
 security = HTTPBearer()
@@ -708,7 +709,7 @@ if __name__ == '__main__':
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=7002)
     parser.add_argument('--mcp-conf', default='', help="the mcp servers json config file")
-    parser.add_argument('--user-conf', default='user_mcp_configs.json', 
+    parser.add_argument('--user-conf', default='conf/user_mcp_configs.json', 
                        help="用户MCP服务器配置文件路径")
     args = parser.parse_args()
     
