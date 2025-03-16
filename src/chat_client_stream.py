@@ -221,6 +221,10 @@ class ChatClientStream(ChatClient):
                                     # logger.info(f"call_tool result:{result}")
                                     result_content = [{"text": "\n".join([x.text for x in result.content if x.type == 'text'])}]
                                     image_content =  [{"image":{"format":x.mimeType.replace('image/',''), "source":{"bytes":base64.b64decode(x.data)} } } for x in result.content if x.type == 'image']
+                                    
+                                    #content block for json serializable.
+                                    image_content_base64 =  [{"image":{"format":x.mimeType.replace('image/',''), "source":{"base64":x.data} } } for x in result.content if x.type == 'image']
+
                                     return [{ 
                                                 "toolUseId": tool['toolUseId'],
                                                 "content": result_content+image_content
@@ -228,7 +232,12 @@ class ChatClientStream(ChatClient):
                                             { 
                                                 "toolUseId": tool['toolUseId'],
                                                 "content": result_content
-                                            }]
+                                            },
+                                            { 
+                                                "toolUseId": tool['toolUseId'],
+                                                "content": result_content+image_content_base64
+                                            },
+                                            ]
                                     
                                 except Exception as err:
                                     err_msg = f"{tool['name']} tool call is failed. error:{err}"
@@ -236,15 +245,17 @@ class ChatClientStream(ChatClient):
                                                 "toolUseId": tool['toolUseId'],
                                                 "content": [{"text": err_msg}],
                                                 "status": 'error'
-                                            }]*2
+                                            }]*3
                             # 使用 asyncio.gather 并行执行所有工具调用
                             call_results = await asyncio.gather(*[execute_tool_call(tool) for tool in tool_calls])
                             # Correctly unpack the results - each call_result is a list of [tool_result, tool_text_result]
                             tool_results = []
+                            tool_results_serializable = []
                             tool_text_results = []
                             for result in call_results:
                                 tool_results.append(result[0])
                                 tool_text_results.append(result[1])
+                                tool_results_serializable.append(result[2])
                             logger.info(f'tool_text_results {tool_text_results}')
                             # 处理所有工具调用的结果
                             tool_results_content = []
@@ -257,7 +268,7 @@ class ChatClientStream(ChatClient):
                                 "content": tool_results_content
                             }
                             # output tool results
-                            event["data"]["tool_results"] = [item for pair in zip(tool_calls, tool_text_results) for item in pair]
+                            event["data"]["tool_results"] = [item for pair in zip(tool_calls, tool_results_serializable) for item in pair]
                             logger.info('yield event*****')
                             yield event
                             #append assistant message   

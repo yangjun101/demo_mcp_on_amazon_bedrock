@@ -9,8 +9,9 @@ mkdir -p ${LOG_DIR}
 
 # Set environment variables
 export MCP_BASE_URL=http://${MCP_SERVICE_HOST}:${MCP_SERVICE_PORT}
+export USER_MCP_CONFIG_FILE=conf/user_mcp_configs.json
 echo "MCP_BASE_URL: ${MCP_BASE_URL}"
-
+echo "USER_MCP_CONFIG_FILE: ${USER_MCP_CONFIG_FILE}"
 # Start MCP service
 echo "Starting MCP service..."
 nohup python src/main.py --mcp-conf conf/config.json \
