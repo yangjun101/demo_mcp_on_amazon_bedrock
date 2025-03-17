@@ -14,7 +14,7 @@ import base64
 import uuid
 from io import BytesIO
 from streamlit_local_storage import LocalStorage
-
+import copy
 from dotenv import load_dotenv
 load_dotenv() # load env vars from .env
 API_KEY = os.environ.get("API_KEY")
@@ -437,12 +437,27 @@ if prompt := st.chat_input():
                             for i,tool_block in enumerate(tool_blocks):
                                 if i%2 == 0:
                                     with st.expander(f"Tool Call:{tool_count}"):
-                                        st.json(tool_block)
+                                        # st.json(tool_block)
+                                        st.code(json.dumps(tool_block, ensure_ascii=False, indent=2), language="json")
                                 else:
                                     with st.expander(f"Tool Result:{tool_count}"):
-                                        images_data = [BytesIO(base64.b64decode(block['image']['source']['base64']))
-                                                        for block in tool_block['content'] if 'image' in block]
-                                        st.json(tool_block)
+                                         # 处理图片数据
+                                        images_data = []
+                                        display_tool_block = copy.deepcopy(tool_block)  # 创建副本以修改
+                                        
+                                        # 如果有content字段，处理其中的图片
+                                        if 'content' in display_tool_block:
+                                            for j, block in enumerate(display_tool_block['content']):
+                                                if 'image' in block and 'source' in block['image'] and 'base64' in block['image']['source']:
+                                                    # 保存图片数据用于后续显示
+                                                    images_data.append(BytesIO(base64.b64decode(block['image']['source']['base64'])))
+                                                    # 替换base64字符串为提示信息
+                                                    display_tool_block['content'][j]['image']['source']['base64'] = "[BASE64 IMAGE DATA - NOT DISPLAYED]"
+                                        
+                                        # 显示处理后的JSON
+                                        st.code(json.dumps(display_tool_block, ensure_ascii=False, indent=2), language="json")
+                
+                                        # 显示图片
                                         tool_count += 1
                                         for image_data in images_data:
                                             st.image(image_data)

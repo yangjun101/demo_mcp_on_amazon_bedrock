@@ -142,9 +142,12 @@ async def save_user_mcp_configs():
 async def initialize_user_servers(session: UserSession):
     """初始化用户特有的MCP服务器"""
     user_id = session.user_id
+    
     server_configs = get_user_server_configs(user_id)
     
-    server_configs = get_global_server_configs() if server_configs == {} else server_configs
+    global_server_configs = get_global_server_configs()
+    #合并全局和用户的servers
+    server_configs = {**server_configs,**global_server_configs}
     
     logger.info(f"server_configs:{server_configs}")
     # 初始化服务器连接
