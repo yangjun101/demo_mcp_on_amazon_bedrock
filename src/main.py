@@ -39,7 +39,7 @@ llm_model_list = {}
 shared_mcp_server_list = {}  # 共享的MCP服务器描述信息
 global_mcp_server_configs = {}  # 全局MCP服务器配置 server_id -> config
 user_mcp_server_configs = {}  # 用户特有的MCP服务器配置 user_id -> {server_id: config}
-MAX_TURNS = int(os.environ.get("MAX_TURNS",50))
+MAX_TURNS = int(os.environ.get("MAX_TURNS",200))
 INACTIVE_TIME = int(os.environ.get("INACTIVE_TIME",60*24))  #mins
 
 
