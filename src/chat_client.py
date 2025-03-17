@@ -22,7 +22,7 @@ CLAUDE_37_SONNET_MODEL_ID = 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'
 class ChatClient:
     """Bedrock simple chat wrapper"""
 
-    def __init__(self, access_key_id='', secret_access_key='', region='us-east-1'):
+    def __init__(self, access_key_id='', secret_access_key='', region=''):
         self.env = {
             'AWS_ACCESS_KEY_ID': access_key_id or os.environ.get('AWS_ACCESS_KEY_ID'),
             'AWS_SECRET_ACCESS_KEY': secret_access_key or os.environ.get('AWS_SECRET_ACCESS_KEY'),
