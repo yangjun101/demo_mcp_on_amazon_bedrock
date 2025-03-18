@@ -347,7 +347,7 @@ with st.sidebar:
     st.session_state.temperature = st.number_input('Temperature',
                                  min_value=0.0, max_value=1.0, value=0.6, step=0.1)
     st.session_state.only_n_most_recent_images = st.number_input('N most recent images',
-                                 min_value=0, value=3)
+                                 min_value=0, value=1)
     st.session_state.system_prompt = st.text_area('System',
                                 value=st.session_state.system_prompt,
                                 height=100,
