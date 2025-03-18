@@ -14,7 +14,7 @@
 
 该项目目前仍在不断探索完善，MCP 正在整个社区蓬勃发展，欢迎大家一起关注！
 
-## 项目特点：
+## 1. 项目特点：
 - 同时支持Amazon Nova Pro和Claude Sonnet3.5模型
 - 与Anthropic官方MCP标准完全兼容，可以采用同样的方式，直接使用社区的各种[MCP servers](https://github.com/modelcontextprotocol/servers/tree/main)
 - 将MCP能力和客户端的解耦，MCP能力封装在服务端，对外提供API服务，且chat接口兼容openai，方便接入其他chat客户端
@@ -23,24 +23,22 @@
 - 支持多用户，用户session隔离，支持并发访问。
 
 
-## 1. 依赖安装
+## 2. 安装步骤
+### 2.1. 依赖安装
 
 目前主流 MCP Server 基于 NodeJS 或者 Python 开发实现并运行于用户 PC 上，因此用户 PC 需要安装这些依赖。
 
-### NodeJS
+### 2.1 NodeJS
 
 NodeJS [下载安装](https://nodejs.org/en)，本项目已对 `v22.12.0` 版本充分测试。
 
-### Python
+### 2.2 Python
 
 有些 MCP Server 基于 Python 开发，因此用户必须安装 [Python](https://www.python.org/downloads/)。此外本项目代码也基于 Python 开发，需要安装环境和依赖。
 
 首先，安装 Python 包管理工具 uv，具体可参考 [uv](https://docs.astral.sh/uv/getting-started/installation/) 官方指南，本项目已对 `v0.5.11` 版本充分测试。
 
-## 2. 环境和配置
-
-### 环境准备
-
+### 2.3 环境配置
 下载克隆该项目后，进入项目目录创建 Python 虚拟环境并安装依赖：
 ```bas
 uv sync
@@ -51,10 +49,8 @@ uv sync
 source .venv/bin/activate
 ```
 
-### 配置编辑
-
-项目配置写入 `.env` 文件，应包含以下配置项（建议拷贝 `env_dev` 在其基础上修改）：
-
+### 2.4 配置编辑
+项目配置写入 `.env` 文件，应包含以下配置项（建议拷贝 `env_dev` 在其基础上修改）： 
 ```
 AWS_ACCESS_KEY_ID=(可选)<your-access-key>
 AWS_SECRET_ACCESS_KEY=(可选)<your-secret-key>
@@ -71,20 +67,17 @@ MAX_TURNS=100
 
 ## 3. 运行
 
-该项目包含两个服务：
-
+### 3.1 该项目包含1个后端服务和一个streamlit 前端， 前后端通过rest api对接：
 - **Chat 接口服务（Bedrock+MCP）**，可对外提供 Chat 接口、同时托管多个 MCP server、支持历史多轮对话输入、响应内容附加了工具调用中间结果、暂不支持流式响应
-- **ChatBot UI 服务**，跟上述 Chat 接口服务通信，提供多轮对话、管理 MCP 的 Web UI 演示服务
+- **ChatBot UI **，跟上述 Chat 接口服务通信，提供多轮对话、管理 MCP 的 Web UI 演示服务
 
-### Chat 接口服务（Bedrock+MCP）
+### 3.2 Chat 接口服务（Bedrock+MCP）
 - 接口服务可以对外提供给独立API，接入其他chat客户端, 实现服务端MCP能力和客户端的解耦
 - 可以通过http://{ip}:7002/docs#/查看接口文档.
 ![alt text](./docs/image_api.png)
 
-编辑配置文件 `conf/config.json`，该文件预设了要启动哪些 MCP server，可以编辑来添加或者修改 MCP server 参数。
-
-每个 MCP server 的参数规范，可参考如下示例：
-
+- 编辑配置文件 `conf/config.json`，该文件预设了要启动哪些 MCP server，可以编辑来添加或者修改 MCP server 参数。
+- 每个 MCP server 的参数规范，可参考如下示例： 
 ```
 "db_sqlite": {
     "command": "uvx",
@@ -95,14 +88,17 @@ MAX_TURNS=100
 }
 ```
 
-启动服务：
-
+- 启动服务：
 ```bash
 bash start_all.sh
 ```
 
-待启动后，可查看日志 `logs/start_mcp.log` 确认无报错，然后可运行测试脚本检查 Chat 接口：
+- 停止服务:
+```bash
+bash stop_all.sh
+```
 
+- 待启动后，可查看日志 `logs/start_mcp.log` 确认无报错，然后可运行测试脚本检查 Chat 接口：
 ```bash
 # 脚本使用 Bedrock 的 Amazon Nova-lite 模型，也可更换其它
 # 默认使用123456作为API key, 请根据实际设置更改
@@ -123,10 +119,8 @@ curl http://127.0.0.1:7002/v1/chat/completions \
   }'
 ```
 
-### ChatBot UI 服务
-
+### 3.3.ChatBot UI 
 待启动后，可查看日志 `logs/start_chatbot.log` 确认无报错，然后浏览器打开[服务地址](http://localhost:8502/)，即可体验 MCP 增强后的 Bedrock 大模型 ChatBot 能力。
-
 由于已内置了文件系统操作、SQLite 数据库等 MCP Server，可以尝试连续提问以下问题进行体验：
 
 ```
@@ -138,19 +132,14 @@ list all of files in the allowed directory
 read the content of rows.txt file
 ```
 
-## 4. 添加 MCP Server
-
+### 3.4. 添加 MCP Server
 当前可以通过两种方式来添加 MCP Server：
-
-1. 预置在 `conf/config.json`，每次重新启动 Chat 接口服务就会加载配置好的 MCP Server
-2. 通过 ChatBot UI 来添加 MCP Server，表单提交 MCP Server 参数即可，仅当前生效、服务重启后失效
-
-下面演示如何通过 ChatBot UI 添加 MCP Server，这里以 Web Search 供应商 [Exa](https://exa.ai/) 为例，开源社区已有针对它的 [MCP Server](https://github.com/exa-labs/exa-mcp-server) 可用。
-
-首先，前往 [Exa](https://exa.ai/) 官网注册账号，并获取 API Key。
-
-然后点击【添加 MCP Server】，在弹出菜单中填写如下参数并提交即可：
-- 方式1，直接添加MCP json 配置文件(与Anthropic官方格式相同)
+1. 预置在 `conf/config.json`，每次重新启动 Chat 接口服务就会加载配置好的 MCP Server 
+2. 通过 ChatBot UI 来添加 MCP Server，表单提交 MCP Server 参数即可，仅当前生效、服务重启后失效  
+下面演示如何通过 ChatBot UI 添加 MCP Server，这里以 Web Search 供应商 [Exa](https://exa.ai/) 为例，开源社区已有针对它的 [MCP Server](https://github.com/exa-labs/exa-mcp-server) 可用。  
+首先，前往 [Exa](https://exa.ai/) 官网注册账号，并获取 API Key。  
+然后点击【添加 MCP Server】，在弹出菜单中填写如下参数并提交即可：  
+- 方式1，直接添加MCP json 配置文件(与Anthropic官方格式相同)  
 ![](docs/add_mcp_server2.png)  
 ```json
 {
@@ -169,6 +158,9 @@ read the content of rows.txt file
 ![](docs/add_mcp_server.png)  
 
 此时在已有 MCP Server 列表中就可以看到新添加项，勾选即可启动该 MCP Server。
+
+## 4. CDK安装（新增）
+[README](cdk/README.me)
 
 ## 5 Demo cases
 ### 5.1.使用MCP操作Browser浏览器 
@@ -314,10 +306,11 @@ docker build -t mcp/aws-kb-retrieval:latest -f src/aws-kb-retrieval-server/Docke
 ```
 
 
-## 6. 停止服务
-```bash
-bash stop_all.sh
-```
+## 6. Awsome MCPs
+- https://github.com/punkpeye/awesome-mcp-servers
+- https://github.com/modelcontextprotocol/servers
+- https://www.aimcp.info/en
+- https://github.com/cline/mcp-marketplace
+- https://github.com/xiehust/sample-mcp-servers
 
-
-[LICENSE](./LICENSE)
+## 9. [LICENSE](./LICENSE)
