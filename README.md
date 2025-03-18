@@ -1,9 +1,15 @@
 # MCP on Amazon Bedrock[[English Readme](./README.en.md)]
 
 > ChatBot 是大模型时代最常见的应用形态，但受限于大模型无法获取及时信息、无法操作外部系统等，使得 ChatBot 应用场景相对有限。后来随着 Function Calling/Tool Use 功能推出，大模型能够跟外部系统交互，但弊端在于大模型业务逻辑和 Tool 开发都是紧密耦合的，无法发挥出 Tool 端规模化的效率。Anthropic 2024 年 11 月底推出 [MCP](https://www.anthropic.com/news/model-context-protocol) 打破了这一局面，引入整个社区的力量在 Tool 端规模化发力，目前已经有开源社区、各路厂商等开发了丰富的 [MCP server](https://github.com/modelcontextprotocol/servers)，使得 Tool 端蓬勃发展。终端用户即插即用就可将其集成到自己的 ChatBot 中，极大延展了 ChatBot UI 的能力，有种 ChatBot 一统各种系统 UI 的趋势。
+- MCP 如何工作  
 ![alt text](docs/mcp_how.png)  
 
-本项目提供基于 **Bedrock** 中Nova,Claude等大模型的 ChatBot 交互服务，同时引入 **MCP**，极大增强并延伸 ChatBot 形态产品的应用场景，可支持本地文件系统、数据库、开发工具、互联网检索等无缝接入。如果说包含大模型的 ChatBot 相当于大脑的话，那引入 MCP 后就相当于装上了胳膊腿，真正让大模型动起来、跟各种现存系统和数据联通。  
+- 基于AWS的MCP企业架构设计思路  
+![alt text](docs/image-aws-arch.png)
+
+- 本项目提供基于 **Bedrock** 中Nova,Claude等大模型的 ChatBot 交互服务，同时引入 **MCP**，极大增强并延伸 ChatBot 形态产品的应用场景，可支持本地文件系统、数据库、开发工具、互联网检索等无缝接入。如果说包含大模型的 ChatBot 相当于大脑的话，那引入 MCP 后就相当于装上了胳膊腿，真正让大模型动起来、跟各种现存系统和数据联通。  
+
+- 本Demo方案架构
 ![](docs/arch.png)
 
 该项目目前仍在不断探索完善，MCP 正在整个社区蓬勃发展，欢迎大家一起关注！
@@ -14,10 +20,7 @@
 - 将MCP能力和客户端的解耦，MCP能力封装在服务端，对外提供API服务，且chat接口兼容openai，方便接入其他chat客户端
 ![alt text](./docs/image_api.png)
 - 前后端分离，MCP Client和MCP Server均可以部署到服务器端，用户可以直接使用web浏览器通过后端web服务交互，从而访问LLM和MCP Sever能力和资源  
-- 1. 时序图1:使用Search API 的 MCP Server  
-![alt text](docs/image-seq1.png)  
-- 2. 时序图1:使用Headless Browser 的 MCP Server 
-![alt text](docs/image-seq2.png)  
+- 支持多用户，用户session隔离，支持并发访问。
 
 
 ## 1. 依赖安装
@@ -61,9 +64,10 @@ CHATBOT_SERVICE_PORT=<chatbot-ui-service-port>
 MCP_SERVICE_HOST=127.0.0.1
 MCP_SERVICE_PORT=<bedrock-mcp-service-port>
 API_KEY=<your-new-api-key>
+MAX_TURNS=100
 ```
 
-备注：该项目用到 **AWS Bedrock Nova** 系列大模型，因此需要注册并获取以上服务访问密钥。
+备注：该项目用到 **AWS Bedrock Nova/Claude** 系列模型，因此需要注册并获取以上服务访问密钥。
 
 ## 3. 运行
 
@@ -105,12 +109,15 @@ bash start_all.sh
 curl http://127.0.0.1:7002/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer 123456" \
+  -H "X-User-ID: user123" \
   -d '{
-    "model": "amazon.nova-lite-v1:0",
+    "model": "us.amazon.nova-pro-v1:0",
+    "mcp_server_ids":["local_fs"],
+    "stream":true,
     "messages": [
       {
         "role": "user",
-        "content": "show all of tables in db"
+        "content": "list files in current dir"
       }
     ]
   }'
@@ -202,9 +209,64 @@ system prompt输入：`when you use mcp browser, If you need to visit search eng
 输入任务：`我想要一份特斯拉股票的全面分析，包括：概述：公司概况、关键指标、业绩数据和投资建议财务数据：收入趋势、利润率、资产负债表和现金流分析市场情绪：分析师评级、情绪指标和新闻影响技术分析：价格趋势、技术指标和支撑/阻力水平资产比较：市场份额和与主要竞争对手的财务指标对比价值投资者：内在价值、增长潜力和风险因素投资论点：SWOT 分析和针对不同类型投资者的建议。 并制作成精美的HTML保存到本地目录中。 你可以使用mcp-browser和exa search去获取尽可能丰富的实时数据和图片。`   
 [最终输出文件示例](docs/tesla_stock_analysis.html)  
 
+- **时序图1:使用Headless Browser 的 MCP Server**
+![alt text](docs/image-seq2.png)  
+
+### 5.2 使用MCP Computer Use 操作 EC2 remote desktop
+- 在另外一个目录中安装下载remote-computer-use
+```bash
+git clone https://github.com/xiehust/sample-mcp-servers.git
+```
+- 需要提前安装一台EC2实例，并配置VNC远程桌面。安装步骤请参考[说明](https://github.com/xiehust/sample-mcp-servers/blob/main/remote_computer_use/README.md)
+- 环境配置好之后，在MCP demo客户端配置如下：
+```json
+{
+    "mcpServers": {
+        "computer_use": {
+            "command": "uv",
+            "env": {
+                "VNC_HOST":"",
+                "VNC_PORT":"5901",
+                "VNC_USERNAME":"ubuntu",
+                "VNC_PASSWORD":"",
+                "PEM_FILE":"",
+                "SSH_PORT":"22",
+                "DISPLAY_NUM":"1"
+            },
+            "args": [
+                "--directory",
+                "/absolute_path_to/remote_computer_use",
+                "run",
+                "server_claude.py"
+            ]
+        }
+    }
+}
+```
+- 使用Computer Use推荐用Claude 3.7模型，并添加如下system prompt
+```
+You are a computer agent, you can actually operate a vitural computer. 
+you have capability:
+<SYSTEM_CAPABILITY>
+* You are utilising an Ubuntu virtual machine using Linux architecture with internet access.
+* You can feel free to install Ubuntu applications with your bash tool. Use curl instead of wget.
+* When viewing a page it can be helpful to zoom out so that you can see everything on the page.  Either that, or make sure you scroll down to see everything before deciding something isn't available.
+* When using your computer function calls, they take a while to run and send back to you.  Where possible/feasible, try to chain multiple of these calls all into one function calls request.
+</SYSTEM_CAPABILITY>
+
+<IMPORTANT>
+* Don't assume an application's coordinates are on the screen unless you saw the screenshot. To open an application, please take screenshot first and then find out the coordinates of the application icon. 
+* When using Firefox, if a startup wizard or Firefox Privacy Notice appears, IGNORE IT.  Do not even click "skip this step".  Instead, click on the address bar where it says "Search or enter address", and enter the appropriate search term or URL there.
+* If the item you are looking at is a pdf, if after taking a single screenshot of the pdf it seems that you want to read the entire document instead of trying to continue to read the pdf from your screenshots + navigation, determine the URL, use curl to download the pdf, install and use pdftotext to convert it to a text file, and then read that text file directly with your StrReplaceEditTool.
+* After each step, take a screenshot and carefully evaluate if you have achieved the right outcome. Explicitly show your thinking: "I have evaluated step X..." If not correct, try again. Only when you confirm a step was executed correctly should you move on to the next one.
+</IMPORTANT>
+```
+
+- **时序图:使用Computer Use 操作 EC2 Remote Desktop**  
+![alt text](docs/image-seq3.png)
 
 
-### 5.2.开启Deep Research
+### 5.3.使用Sequential Thinking + Search 做 Deep Research (主要针对Nova/Claude 3.5模型, Claude 3.7不需要)
 - 同时启用 websearch(参考上面的EXA配置)和 [Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)，目前已经预置了Sequential Thinking MCP Server在配置文件中, 启动后可以看到server名称是cot。  
 ![alt text](docs/image-serverlist.png)
 - Sequential Thinking提供通过动态的结构化思维过程和反思，通过工具调用的促使模型按工具输入的要求进行结构化输出推理链条。
@@ -220,6 +282,8 @@ system prompt输入：`when you use mcp browser, If you need to visit search eng
 ![alt text](docs/image_deepresearch_1.png)
 ![alt text](docs/image_deepresearch_2.png)
 
+- **时序图:使用Search API 的 MCP Server**  
+![alt text](docs/image-seq1.png)  
 
 ###  5.3. 使用Amazon Knowledge Base
 先在Bedrock console中创建或者使用已有的Bedrock，记下Knowledge Base Id  
