@@ -69,7 +69,7 @@ MAX_TURNS=100
 
 ### 3.1 该项目包含1个后端服务和一个streamlit 前端， 前后端通过rest api对接：
 - **Chat 接口服务（Bedrock+MCP）**，可对外提供 Chat 接口、同时托管多个 MCP server、支持历史多轮对话输入、响应内容附加了工具调用中间结果、暂不支持流式响应
-- **ChatBot UI **，跟上述 Chat 接口服务通信，提供多轮对话、管理 MCP 的 Web UI 演示服务
+- **ChatBot UI**，跟上述 Chat 接口服务通信，提供多轮对话、管理 MCP 的 Web UI 演示服务
 
 ### 3.2 Chat 接口服务（Bedrock+MCP）
 - 接口服务可以对外提供给独立API，接入其他chat客户端, 实现服务端MCP能力和客户端的解耦
