@@ -1,84 +1,185 @@
-# Bedrock MCP CDK
+# CDK Deployment Guide for MCP on Amazon Bedrock
 
-This CDK project deploys the Bedrock MCP Demo application to AWS.
+This guide explains how to deploy the MCP on Amazon Bedrock infrastructure using AWS CDK.
+
+## Architecture Overview
+
+![Architecture Diagram](../docs/image-aws-arch.png)
+
+The infrastructure consists of the following AWS components:
+
+1. **VPC Configuration**
+   - 2 Availability Zones
+   - Public and Private subnets
+   - NAT Gateway for private subnet internet access
+
+2. **Application Load Balancer (ALB)**
+   - Internet-facing
+   - Listener on port 8502 for Streamlit UI
+   - Health checks configured
+
+3. **Auto Scaling Group (ASG)**
+   - Uses t3.medium instances
+   - Ubuntu 22.04 LTS AMI
+   - Deployed in private subnets
+   - Min/Max capacity: 1/1
+
+4. **Security Group**
+   - Allows inbound traffic on port 8502 (Streamlit UI)
+   - Allows all outbound traffic
+
+5. **IAM Configuration**
+   - EC2 Instance Role with SSM access
+   - Bedrock API access permissions
+   - API User for programmatic access
 
 ## Prerequisites
 
-- AWS CLI configured with appropriate credentials
-- Node.js v22.x
-- AWS CDK CLI installed (`npm install -g aws-cdk`)
+1. AWS CLI installed and configured
+2. Node.js v22.x or later
+3. AWS CDK CLI installed (`npm install -g aws-cdk`)
+4. TypeScript (`npm install -g typescript`)
 
-## Installation
+## Required IAM Permissions
 
-1. Install dependencies:
+To deploy this stack, you need an IAM user/role with the following permissions:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:*",
+                "elasticloadbalancing:*",
+                "autoscaling:*",
+                "iam:*",
+                "cloudformation:*",
+                "bedrock:*",
+                "ssm:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+## Deployment Steps
+
+1. **Install dependencies**
+   ```bash
+   cd cdk
+   npm install   # This will install all required dependencies including aws-cdk-lib and constructs
+   npm run build # This will compile the TypeScript code
+   ```
+
+   Note: If you see TypeScript errors about missing modules, make sure the dependencies are properly installed by running `npm install` again.
+
+2. **Deploy the stack**
+
+   You can deploy the stack using a timestamp-based qualifier to avoid naming conflicts when deploying multiple instances:
+
+   ```bash
+   # Deploy with timestamp-based qualifier
+   TIMESTAMP=$(date +%H%M%S)
+   cdk bootstrap --context qualifier=cdk$TIMESTAMP --qualifier cdk$TIMESTAMP --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP && \
+   cdk deploy --context qualifier=cdk$TIMESTAMP --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP
+   ```
+
+   Or use a custom qualifier:
+
+   ```bash
+   cdk bootstrap --qualifier <your-qualifier>
+   cdk deploy --qualifier <your-qualifier>
+   ```
+
+   Note: The qualifier is required and must be provided via --context qualifier=<value> or --qualifier=<value>
+
+## Stack Outputs
+
+After deployment, the CDK stack outputs:
+
+1. **Streamlit-Endpoint**: URL to access the Streamlit UI
+2. **ApiAccessKeyId**: Access Key ID for API access
+3. **ApiSecretAccessKey**: Secret Access Key for API access
+
+## Configuration
+
+The stack creates:
+
+1. **IAM User**: For API access with Bedrock permissions
+   - Username format: `bedrock-mcp-api-user-<stack-name>`
+   - Permissions: `bedrock:InvokeModel*`, `bedrock:ListFoundationModels`
+
+2. **EC2 Instance Role**: For EC2 instances with:
+   - SSM access for management
+   - Bedrock API access
+
+## Security Considerations
+
+1. Access keys are generated and exposed in CloudFormation outputs
+2. The ALB is internet-facing - consider IP restrictions if needed
+3. EC2 instances are in private subnets with NAT Gateway access
+4. Security group limits inbound access to Streamlit port only
+
+## Customization
+
+You can customize the deployment by modifying:
+
+1. **Instance Type**: Change the EC2 instance type in `bedrock-mcp-stack.ts`
+2. **Auto Scaling**: Adjust min/max capacity
+3. **VPC Configuration**: Modify CIDR ranges or AZ count
+4. **Region**: Set via `CDK_DEFAULT_REGION` environment variable
+
+## CDK Configuration
+
+The CDK app uses the following configuration:
+
+1. **TypeScript Configuration (tsconfig.json)**
+   - Target: ES2020
+   - Module: CommonJS
+   - Strict type checking enabled
+   - Output directory: dist/
+
+2. **CDK Context**
+   - Qualifier: Required for resource naming and asset management
+   - Region: Defaults to us-east-1 if not specified
+   - Account: Uses the default AWS account from AWS CLI configuration
+
+## Troubleshooting
+
+1. **TypeScript Compilation Errors**
+   - Ensure all dependencies are installed: `npm install`
+   - Check node_modules directory exists
+   - Verify tsconfig.json is present and correctly configured
+   - Run `npm run build` to check for compilation errors
+
+2. **CDK Deployment Issues**
+   - Verify AWS credentials are properly configured
+   - Ensure CDK is bootstrapped in your account/region
+   - Check CloudFormation console for detailed error messages
+   - Verify you have sufficient IAM permissions
+
+3. **Runtime Issues**
+   - Check EC2 instance logs via AWS Systems Manager
+   - Verify security group allows required traffic
+   - Check ALB health check status
+   - Monitor CloudWatch logs for application issues
+
+## Cleanup
+
+To remove all resources, use the same qualifier that was used during deployment:
+
+If you used a timestamp-based qualifier:
 ```bash
-npm install
+# Replace TIMESTAMP with the timestamp used during deployment
+cdk destroy --context qualifier=cdk$TIMESTAMP --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP
 ```
 
-2. Build the project:
+Or if you used a custom qualifier:
 ```bash
-npm run build
+cdk destroy --qualifier <your-qualifier>
 ```
 
-3. Bootstrap and Deploy:
-```bash
-# Generate timestamp for unique qualifier
-cd /home/ubuntu/demo_mcp_on_amazon_bedrock/cdk && \
-TIMESTAMP=$(date +%H%M%S) && \
-cdk bootstrap --context qualifier=cdk$TIMESTAMP --qualifier cdk$TIMESTAMP --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP && \
-cdk deploy --context qualifier=cdk$TIMESTAMP --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP
-```
-
-IMPORTANT: 
-- The qualifier must be provided via --qualifier and --context during bootstrap
-- The same qualifier must be used in --context during deploy
-- Each deployment should use a unique qualifier (e.g. using timestamp)
-- The toolkit stack name must match between bootstrap and deploy commands
-
-To deploy multiple instances:
-```bash
-# First instance with timestamp1
-TIMESTAMP1=$(date +%H%M%S)
-cdk bootstrap --context qualifier=cdk$TIMESTAMP1 --qualifier cdk$TIMESTAMP1 --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP1 && \
-cdk deploy --context qualifier=cdk$TIMESTAMP1 --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP1
-
-# Second instance with timestamp2
-TIMESTAMP2=$(date +%H%M%S)
-cdk bootstrap --context qualifier=cdk$TIMESTAMP2 --qualifier cdk$TIMESTAMP2 --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP2 && \
-cdk deploy --context qualifier=cdk$TIMESTAMP2 --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP2
-```
-
-## Stack Components
-
-- VPC with public and private subnets
-- EC2 instance running in private subnet
-- Application Load Balancer in public subnet
-- Security groups for EC2 and ALB
-- IAM role with Bedrock permissions
-- Auto Scaling Group (min=1, max=1)
-
-## Services
-
-The stack deploys two services:
-- FastAPI Chat Service (port 7002)
-- Streamlit UI (port 8502)
-
-## Environment Variables
-
-The EC2 instance will be configured with:
-```
-AWS_REGION=us-east-1
-LOG_DIR=./logs
-CHATBOT_SERVICE_PORT=8502
-MCP_SERVICE_HOST=127.0.0.1
-MCP_SERVICE_PORT=7002
-```
-
-## Useful Commands
-
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `cdk deploy`      deploy this stack to your default AWS account/region
-* `cdk diff`        compare deployed stack with current state
-* `cdk synth`       emits the synthesized CloudFormation template
+Note: This will delete all resources including the EC2 instances, ALB, and IAM roles/users. Make sure to backup any data before destroying the stack.
