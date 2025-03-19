@@ -341,7 +341,7 @@ with st.sidebar:
     llm_model_name = st.selectbox('Model List',
                                   list(st.session_state.model_names.keys()))
     st.session_state.max_tokens = st.number_input('Max output token',
-                                 min_value=1, max_value=64000, value=4000)
+                                 min_value=1, max_value=64000, value=8000)
     st.session_state.budget_tokens = st.number_input('Max thinking token',
                                  min_value=1024, max_value=128000, value=8192,step=1024)
     st.session_state.temperature = st.number_input('Temperature',
