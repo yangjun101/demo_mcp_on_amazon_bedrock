@@ -50,8 +50,8 @@ source .venv/bin/activate
 ```
 
 ### 2.4 配置编辑
-> Tips: 如何需要配置多个账号ak/sk, 使用轮询机制，可以在conf/目录下增加一个`credential.csv`, 列名分别为**ak**，**sk**， 填入多个ak/sk即可: 
-如：   
+> Tips: 如何需要配置多个账号ak/sk, 使用轮询机制，可以在conf/目录下增加一个`credential.csv`, 列名分别为**ak**，**sk**， 填入多个ak/sk即可，例如: 
+  
 | ak | sk |  
 | ----- | ----- |  
 | ak 1 | sk 1 |  
