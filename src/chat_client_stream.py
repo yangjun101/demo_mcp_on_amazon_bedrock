@@ -34,8 +34,8 @@ class ChatClientStream(ChatClient):
         self.client_index = 0 
 
     def get_bedrock_client_from_pool(self):
-        logger.info(f"get_bedrock_client_from_pool[{self.client_index}]")
         if self.bedrock_client_pool:
+            logger.info(f"get_bedrock_client_from_pool index: [{self.client_index}]")
             if self.client_index and self.client_index %(len(self.bedrock_client_pool)-1) == 0:
                 self.client_index = 0
             bedrock_client = self.bedrock_client_pool[self.client_index]

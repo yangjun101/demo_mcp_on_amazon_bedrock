@@ -17,7 +17,7 @@ from typing import Dict, Any, List, Optional, Literal, AsyncGenerator
 import uuid
 import threading
 from contextlib import asynccontextmanager
-import boto3
+import os
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
@@ -53,7 +53,10 @@ logger = logging.getLogger(__name__)
 class UserSession:
     def __init__(self, user_id):
         self.user_id = user_id
-        self.chat_client = ChatClientStream(credential_file="conf/credentials.csv")
+        if os.path.exists("conf/credentials.csv"):
+            self.chat_client = ChatClientStream(credential_file="conf/credentials.csv")
+        else:
+            self.chat_client = ChatClientStream()
         self.mcp_clients = {}  # 用户特定的MCP客户端
         self.last_active = datetime.now()
         self.session_id = str(uuid.uuid4())
