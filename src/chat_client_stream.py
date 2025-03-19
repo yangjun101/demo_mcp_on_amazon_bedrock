@@ -26,12 +26,24 @@ CLAUDE_37_SONNET_MODEL_ID = 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'
 class ChatClientStream(ChatClient):
     """Extended ChatClient with streaming support"""
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self,credential_file=''):
+        super().__init__(credential_file)
         self.max_retries = 10 # Maximum number of retry attempts
         self.base_delay = 10 # Initial backoff delay in seconds
         self.max_delay = 60 # Maximum backoff delay in seconds
+        self.client_index = 0 
 
+    def get_bedrock_client_from_pool(self):
+        logger.info(f"get_bedrock_client_from_pool[{self.client_index}]")
+        if self.bedrock_client_pool:
+            if self.client_index and self.client_index %(len(self.bedrock_client_pool)-1) == 0:
+                self.client_index = 0
+            bedrock_client = self.bedrock_client_pool[self.client_index]
+            self.client_index += 1
+        else:
+            bedrock_client = self._get_bedrock_client()
+        return bedrock_client
+        
     async def _process_stream_response(self, response) -> AsyncIterator[Dict]:
         """Process the raw response from converse_stream"""
         for event in response['stream']:
@@ -95,7 +107,10 @@ class ChatClientStream(ChatClient):
                 tool_config_response = await mcp_clients[mcp_server_id].get_tool_config(server_id=mcp_server_id)
                 tool_config['tools'].extend(tool_config_response["tools"])
         logger.info(f"Tool config: {tool_config}")
-        bedrock_client = self._get_bedrock_client()
+        
+        use_client_pool = True if self.bedrock_client_pool else False
+
+        bedrock_client = self.get_bedrock_client_from_pool()
         
         # Track the current tool use state
         current_tool_use = None
@@ -132,6 +147,7 @@ class ChatClientStream(ChatClient):
             # invoke bedrock llm with user query
             try:
                 attempt = 0
+                pool_attempt = 0
                 while attempt <= self.max_retries:
                     try:
                         response = bedrock_client.converse_stream(
@@ -141,17 +157,32 @@ class ChatClientStream(ChatClient):
                     except ClientError as error:
                         logger.info(str(error))
                         if error.response['Error']['Code'] == 'ThrottlingException':
-                            if attempt < self.max_retries:
-                                delay = self.exponential_backoff(attempt)
-                                msg = f"Throttling exception encountered. Retrying in {delay:.2f} seconds (attempt {attempt+1}/{self.max_retries})\n"
-                                logger.warning(msg)
-                                # yield {"type": "error", "data": {"error":msg}}
-
-                                time.sleep(delay)
-                                attempt += 1
+                            if use_client_pool:
+                                bedrock_client = self.get_bedrock_client_from_pool()
+            
+                                if pool_attempt > len(self.bedrock_client_pool): # 如果都轮巡了一遍
+                                    delay = self.exponential_backoff(attempt)
+                                    msg = f"Throttling exception encountered. Retrying in {delay:.2f} seconds (attempt {attempt+1}/{self.max_retries})\n"
+                                    logger.warning(msg)
+                                    time.sleep(delay)
+                                    attempt += 1
+                                    attempt = min(attempt,2) ##最多退2步
+                                    pool_attempt = 0 #重置一下
+                                pool_attempt+=1
+                                continue
                             else:
-                                logger.error(f"Maximum retry attempts ({self.max_retries}) reached. Throttling persists.")
-                                raise Exception("Maximum retry attempts reached. Service is still throttling requests.")
+                                bedrock_client = self._get_bedrock_client()
+                                if attempt < self.max_retries:
+                                    delay = self.exponential_backoff(attempt)
+                                    msg = f"Throttling exception encountered. Retrying in {delay:.2f} seconds (attempt {attempt+1}/{self.max_retries})\n"
+                                    logger.warning(msg)
+                                    # yield {"type": "error", "data": {"error":msg}}
+
+                                    time.sleep(delay)
+                                    attempt += 1
+                                else:
+                                    logger.error(f"Maximum retry attempts ({self.max_retries}) reached. Throttling persists.")
+                                    raise Exception("Maximum retry attempts reached. Service is still throttling requests.")
                         else:
                             raise error
 
@@ -311,7 +342,7 @@ class ChatClientStream(ChatClient):
                                     min_removal_threshold=image_truncation_threshold,
                             )
 
-                            logger.info("Call new turn : %s" % messages)
+                            logger.info(f"Call new turn : message length:{len(messages)}")
                             
                             # Reset tool state
                             current_tool_use = None

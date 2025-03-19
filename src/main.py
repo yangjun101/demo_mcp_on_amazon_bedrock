@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 class UserSession:
     def __init__(self, user_id):
         self.user_id = user_id
-        self.chat_client = ChatClientStream()
+        self.chat_client = ChatClientStream(credential_file="conf/credentials.csv")
         self.mcp_clients = {}  # 用户特定的MCP客户端
         self.last_active = datetime.now()
         self.session_id = str(uuid.uuid4())

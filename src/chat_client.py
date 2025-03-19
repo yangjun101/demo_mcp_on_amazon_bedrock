@@ -12,7 +12,7 @@ from botocore.config import Config
 from dotenv import load_dotenv
 from mcp_client import MCPClient
 from utils import maybe_filter_to_n_most_recent_images
-
+import pandas as pd
 load_dotenv()  # load environment variables from .env
 
 logger = logging.getLogger(__name__)
@@ -22,14 +22,35 @@ CLAUDE_37_SONNET_MODEL_ID = 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'
 class ChatClient:
     """Bedrock simple chat wrapper"""
 
-    def __init__(self, access_key_id='', secret_access_key='', region=''):
+    bedrock_client_pool = []
+    
+    def __init__(self, credential_file='', access_key_id='', secret_access_key='', region=''):
         self.env = {
             'AWS_ACCESS_KEY_ID': access_key_id or os.environ.get('AWS_ACCESS_KEY_ID'),
             'AWS_SECRET_ACCESS_KEY': secret_access_key or os.environ.get('AWS_SECRET_ACCESS_KEY'),
             'AWS_REGION': region or os.environ.get('AWS_REGION'),
         }
+        if credential_file:
+            credentials = pd.read_csv(credential_file)
+            for index, row in credentials.iterrows():
+                self.bedrock_client_pool.append(self._get_bedrock_client(ak=row['ak'],sk=row['sk']))
+            logger.info(f"Loaded {len(self.bedrock_client_pool)} bedrock clients from {credential_file}")
 
-    def _get_bedrock_client(self, runtime=True):
+    def _get_bedrock_client(self, ak='', sk='', region='', runtime=True):
+        if ak and sk:
+            bedrock_client = boto3.client(
+                service_name='bedrock-runtime' if runtime else 'bedrock',
+                aws_access_key_id=ak,
+                aws_secret_access_key=sk,
+                region_name=region or os.environ.get('AWS_REGION'),
+                config=Config(
+                    retries={
+                        "max_attempts": 1,
+                        "mode": "standard",
+                    },
+                    read_timeout=300,
+                )
+            )
         if self.env['AWS_ACCESS_KEY_ID'] and self.env['AWS_SECRET_ACCESS_KEY']:
             bedrock_client = boto3.client(
                 service_name='bedrock-runtime' if runtime else 'bedrock',
