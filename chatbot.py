@@ -341,13 +341,13 @@ with st.sidebar:
     llm_model_name = st.selectbox('Model List',
                                   list(st.session_state.model_names.keys()))
     st.session_state.max_tokens = st.number_input('Max output token',
-                                 min_value=1, max_value=64000, value=4000)
+                                 min_value=1, max_value=64000, value=8000)
     st.session_state.budget_tokens = st.number_input('Max thinking token',
                                  min_value=1024, max_value=128000, value=8192,step=1024)
     st.session_state.temperature = st.number_input('Temperature',
                                  min_value=0.0, max_value=1.0, value=0.6, step=0.1)
     st.session_state.only_n_most_recent_images = st.number_input('N most recent images',
-                                 min_value=0, value=3)
+                                 min_value=0, value=1)
     st.session_state.system_prompt = st.text_area('System',
                                 value=st.session_state.system_prompt,
                                 height=100,
