@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.12"
 
 [[package]]
@@ -376,6 +377,7 @@ dependencies = [
     { name = "boto3" },
     { name = "fastapi" },
     { name = "mcp" },
+    { name = "pandas" },
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "streamlit" },
@@ -389,6 +391,7 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.37.1" },
     { name = "fastapi", specifier = ">=0.115.6" },
     { name = "mcp", specifier = ">=1.1.2" },
+    { name = "pandas", specifier = ">=2.2.3" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "streamlit", specifier = ">=1.41.1" },
