@@ -202,6 +202,12 @@ export class BedrockMcpStack extends cdk.Stack {
         '/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id',
         { os: ec2.OperatingSystemType.LINUX }
       ),
+      blockDevices: [
+        {
+          deviceName: '/dev/sda1',  // Root volume
+          volume: autoscaling.BlockDeviceVolume.ebs(100), // 100 GB
+        }
+      ],
       userData,
       role,
       securityGroup: sg,
