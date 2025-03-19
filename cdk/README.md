@@ -82,7 +82,7 @@ To deploy this stack, you need an IAM user/role with the following permissions:
 
    ```bash
    # Deploy with timestamp-based qualifier
-   TIMESTAMP=$(date +%H%M%S)
+   TIMESTAMP=$(date +%H%M%S) && \
    cdk synth --context qualifier=cdk$TIMESTAMP && \
    cdk bootstrap --context qualifier=cdk$TIMESTAMP --qualifier cdk$TIMESTAMP --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP && \
    cdk deploy --context qualifier=cdk$TIMESTAMP --toolkit-stack-name CDKToolkit-cdk$TIMESTAMP
