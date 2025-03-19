@@ -50,9 +50,16 @@ source .venv/bin/activate
 ```
 
 ### 2.4 配置编辑
+> Tips: 如何需要配置多个账号ak/sk, 使用轮询机制，可以在conf/目录下增加一个`credential.csv`, 列名分别为**ak**，**sk**， 填入多个ak/sk即可: 
+如：   
+| ak | sk |  
+| ----- | ----- |  
+| ak 1 | sk 1 |  
+| ak 2 | sk 2 |  
+
 项目配置写入 `.env` 文件，应包含以下配置项（建议拷贝 `env_dev` 在其基础上修改）： 
 ```
-AWS_ACCESS_KEY_ID=(可选)<your-access-key>
+AWS_ACCESS_KEY_ID=(可选，如果有credential.csv则不需要)<your-access-key>
 AWS_SECRET_ACCESS_KEY=(可选)<your-secret-key>
 AWS_REGION=<your-region>
 LOG_DIR=./logs
