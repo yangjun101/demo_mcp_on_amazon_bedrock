@@ -3,15 +3,15 @@
 > ChatBot is the most common application form in the large model era, but it is limited by the large model's inability to access timely information and operate external systems, making ChatBot application scenarios relatively limited. Later, with the introduction of Function Calling/Tool Use functionality, large models could interact with external systems, but the disadvantage was that the large model's business logic and Tool development were tightly coupled, unable to leverage the efficiency of scale on the Tool side. Anthropic broke this situation in late November 2024 with the introduction of [MCP](https://www.anthropic.com/news/model-context-protocol), bringing in the entire community's power to scale up on the Tool side. Currently, the open-source community and various vendors have developed rich [MCP servers](https://github.com/modelcontextprotocol/servers), enabling the Tool side to flourish. End users can plug and play to integrate them into their ChatBots, greatly extending the capabilities of ChatBot UI, with a trend of ChatBot unifying various system UIs.
 
 - How MCP Works
-![alt text](docs/mcp_how.png)
+![alt text](assets/mcp_how.png)
 
 - AWS-based MCP Enterprise Architecture Design Approach
-![alt text](docs/image-aws-arch.png)
+![alt text](assets/image-aws-arch.png)
 
 - This project provides ChatBot interaction services based on Nova, Claude, and other large models in **Bedrock**, while introducing **MCP**, greatly enhancing and extending the application scenarios of ChatBot-form products, supporting seamless integration with local file systems, databases, development tools, internet retrieval, etc. If a ChatBot with a large model is equivalent to a brain, then introducing MCP is like equipping it with arms and legs, truly making the large model move and connect with various existing systems and data.
 
 - Demo Solution Architecture
-![](docs/arch.png)
+![](assets/arch.png)
 
 This project is still being continuously explored and improved, and MCP is flourishing throughout the community. Everyone is welcome to follow along!
 
@@ -19,7 +19,7 @@ This project is still being continuously explored and improved, and MCP is flour
 - Supports both Amazon Nova Pro and Claude Sonnet3.5 models
 - Fully compatible with Anthropic's official MCP standard, allowing direct use of various [MCP servers](https://github.com/modelcontextprotocol/servers/tree/main) from the community in the same way
 - Decouples MCP capabilities from the client, encapsulating MCP capabilities on the server side, providing API services externally, and with chat interfaces compatible with OpenAI for easy integration with other chat clients
-![alt text](./docs/image_api.png)
+![alt text](./assets/image_api.png)
 - Front-end and back-end separation, both MCP Client and MCP Server can be deployed on the server side, allowing users to interact directly through the backend web service via web browsers, thereby accessing LLM and MCP Server capabilities and resources
 - Supports multiple users, user session isolation, and concurrent access.
 
@@ -74,7 +74,7 @@ Note: This project uses **AWS Bedrock Nova/Claude** series models, so you need t
 ### 3.2 Chat Interface Service (Bedrock+MCP)
 - The interface service can provide independent APIs externally for integration with other chat clients, achieving decoupling of server-side MCP capabilities and clients.
 - You can view the API documentation at http://{ip}:7002/docs#/.
-![alt text](./docs/image_api.png)
+![alt text](./assets/image_api.png)
 
 - Edit the configuration file `conf/config.json`, which preset which MCP servers to start. You can edit it to add or modify MCP server parameters.
 - For the parameter specifications of each MCP server, refer to the following example:
@@ -143,7 +143,7 @@ First, go to the [Exa](https://exa.ai/) official website to register an account 
 Then click [Add MCP Server], and fill in the following parameters in the pop-up menu and submit:
 
 - Method 1: Directly add MCP JSON configuration file (same format as Anthropic official)
-![](docs/add_mcp_server2.png)
+![](assets/add_mcp_server2.png)
 ```json
 {
   "mcpServers": {
@@ -158,7 +158,7 @@ Then click [Add MCP Server], and fill in the following parameters in the pop-up 
 }
 ```
 - Method 2: Add by fields
-![](docs/add_mcp_server.png)
+![](assets/add_mcp_server.png)
 
 Now you can see the newly added item in the list of existing MCP Servers, check it to start the MCP Server.
 
@@ -205,7 +205,7 @@ Task input: `I want a comprehensive analysis of Tesla stock, including: Overview
 [Final output file example](docs/tesla_stock_analysis.html)
 
 - **Sequence Diagram 1: Using Headless Browser MCP Server**
-![alt text](docs/image-seq2.png)
+![alt text](assets/image-seq2.png)
 
 ### 5.2 Using MCP Computer Use to Operate EC2 Remote Desktop
 - Download and install remote-computer-use in another directory
@@ -279,11 +279,11 @@ You are an expert research assistant with deep analytical skills. When presented
 ```
 
 - **Sequence Diagram: Using Computer Use to Operate EC2 Remote Desktop**
-![alt text](docs/image-seq3.png)
+![alt text](assets/image-seq3.png)
 
 ### 5.3. Using Sequential Thinking + Search for Deep Research (mainly for Nova/Claude 3.5 models, Claude 3.7 doesn't need it)
 - Enable both websearch (refer to the EXA configuration above) and [Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking). Sequential Thinking MCP Server is already preset in the configuration file, after starting you can see the server name is cot.
-![alt text](docs/image-serverlist.png)
+![alt text](assets/image-serverlist.png)
 - Sequential Thinking provides structured output reasoning chains through dynamic structured thinking processes and reflection, prompting the model to produce structured output reasoning chains as required by tool inputs.
 - EXA Search provides both keyword and vector retrieval search for network knowledge, returning detailed content from pages.
 - Test questions
@@ -294,15 +294,15 @@ You are an expert research assistant with deep analytical skills. When presented
 4. Search and compare the API performance of deepseek r1 full version provided by Volcano Engine, Ali Bailian, and Silicon Flow, including inference speed, TTFT, maximum context length, etc. Use the sequential thinking tool
 ```
 - Effect overview
-![alt text](docs/image_deepresearch_1.png)
-![alt text](docs/image_deepresearch_2.png)
+![alt text](assets/image_deepresearch_1.png)
+![alt text](assets/image_deepresearch_2.png)
 
 - **Sequence Diagram: Using Search API MCP Server**
-![alt text](docs/image-seq1.png)
+![alt text](assets/image-seq1.png)
 
 ### 5.3. Using Amazon Knowledge Base
 First create or use an existing Bedrock in the Bedrock console, note down the Knowledge Base Id
-Clone [AWS Knowledge Base Retrieval MCP Server](https://github.com/modelcontextprotocol/servers) locally, and replace the file in `src/aws-kb-retrieval-server/index.ts` with the file from [docs/aws-kb-retrieval-server/index.ts)](docs/aws-kb-retrieval-server/index.ts).
+Clone [AWS Knowledge Base Retrieval MCP Server](https://github.com/modelcontextprotocol/servers) locally, and replace the file in `src/aws-kb-retrieval-server/index.ts` with the file from [assets/aws-kb-retrieval-server/index.ts)](assets/aws-kb-retrieval-server/index.ts).
 > The new file specifies knowledgeBaseId through environment variables, no longer requiring it to be passed through dialogue.
 
 Package in the newly cloned servers directory with the following command:
@@ -334,5 +334,7 @@ Then add this JSON file in the chatbot interface, noting that the fields in env 
 - https://www.aimcp.info/en
 - https://github.com/cline/mcp-marketplace
 - https://github.com/xiehust/sample-mcp-servers
+- https://mcp.composio.dev/
+- https://smithery.ai/
 
 ## 9. [LICENSE](./LICENSE)

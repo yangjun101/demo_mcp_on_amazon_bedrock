@@ -2,25 +2,66 @@
 
 > ChatBot 是大模型时代最常见的应用形态，但受限于大模型无法获取及时信息、无法操作外部系统等，使得 ChatBot 应用场景相对有限。后来随着 Function Calling/Tool Use 功能推出，大模型能够跟外部系统交互，但弊端在于大模型业务逻辑和 Tool 开发都是紧密耦合的，无法发挥出 Tool 端规模化的效率。Anthropic 2024 年 11 月底推出 [MCP](https://www.anthropic.com/news/model-context-protocol) 打破了这一局面，引入整个社区的力量在 Tool 端规模化发力，目前已经有开源社区、各路厂商等开发了丰富的 [MCP server](https://github.com/modelcontextprotocol/servers)，使得 Tool 端蓬勃发展。终端用户即插即用就可将其集成到自己的 ChatBot 中，极大延展了 ChatBot UI 的能力，有种 ChatBot 一统各种系统 UI 的趋势。
 - MCP 如何工作  
-![alt text](docs/mcp_how.png)  
+![alt text](assets/mcp_how.png)  
 
 - 基于AWS的MCP企业架构设计思路  
-![alt text](docs/image-aws-arch.png)
+![alt text](assets/image-aws-arch.png)
 
 - 本项目提供基于 **Bedrock** 中Nova,Claude等大模型的 ChatBot 交互服务，同时引入 **MCP**，极大增强并延伸 ChatBot 形态产品的应用场景，可支持本地文件系统、数据库、开发工具、互联网检索等无缝接入。如果说包含大模型的 ChatBot 相当于大脑的话，那引入 MCP 后就相当于装上了胳膊腿，真正让大模型动起来、跟各种现存系统和数据联通。  
 
-- 本Demo方案架构
-![](docs/arch.png)
+- **本Demo方案架构**
+![arch](assets/arch.png)
 
-该项目目前仍在不断探索完善，MCP 正在整个社区蓬勃发展，欢迎大家一起关注！
+- **核心组件**
+![alt text](assets/core_comp.png)  
+   1. MCP客户端(mcp_client.py)
+      - 负责管理与多个MCP服务器的连接
+      - 处理工具调用和资源访问
+      - 提供工具名称映射和规范化功能
+   2. 聊天客户端(chat_client.py,chat_client_stream.py)
+      - 与Amazon Bedrock API交互
+      - 处理用户查询和模型响应
+      - 支持流式响应和工具调用
+   3. 主服务(main.py)
+      - 提供FastAPI服务,暴露聊天和MCP管理API
+      - 管理用户会话和MCP服务器配置
+      - 处理并发请求和资源清理
+   4. Web界面(chatbot.py)
+      - 基于Streamlit的用户界面
+      - 允许用户与模型交互并管理MCP服务器
+      - 显示工具调用结果和思考过程
+
+- **技术架构**
+   1. 前后端分离
+      - 后端:FastAPI服务提供RESTAPI
+      - 前端:Streamlit Web界面
+   2. 多用户支持
+      - 用户会话隔离
+      - 支持并发访问
+   3. MCP服务器管理
+      - 支持动态添加和移除MCP服务器
+      - 全局和用户特定的MCP服务器配置
+
+- **工作流程**
+![alt text](assets/image_process1.png)
+   1. 用户通过Web界面发送查询
+   2. 后端服务接收查询并转发给Bedrock模型
+   3. 如果模型需要使用工具,MCP客户端会调用相应的MCP服务器
+   4. 工具调用结果返回给模型,模型生成最终响应
+   5. 响应返回给用户,包括工具调用过程和结果
+
+- 该项目目前仍在不断探索完善，MCP 正在整个社区蓬勃发展，欢迎大家一起关注！
 
 ## 1. 项目特点：
-- 同时支持Amazon Nova Pro和Claude Sonnet3.5模型
-- 与Anthropic官方MCP标准完全兼容，可以采用同样的方式，直接使用社区的各种[MCP servers](https://github.com/modelcontextprotocol/servers/tree/main)
-- 将MCP能力和客户端的解耦，MCP能力封装在服务端，对外提供API服务，且chat接口兼容openai，方便接入其他chat客户端
-![alt text](./docs/image_api.png)
-- 前后端分离，MCP Client和MCP Server均可以部署到服务器端，用户可以直接使用web浏览器通过后端web服务交互，从而访问LLM和MCP Sever能力和资源  
-- 支持多用户，用户session隔离，支持并发访问。
+   - 同时支持Amazon Nova Pro和Claude Sonnet模型
+   - 与Anthropic官方MCP标准完全兼容，可以采用同样的方式，直接使用社区的各种[MCP servers](https://github.com/modelcontextprotocol/servers/tree/main)
+   - 将MCP能力和客户端的解耦，MCP能力封装在服务端，对外提供API服务，且chat接口兼容openai，方便接入其他chat客户端
+    ![alt text](./assets/image_api.png)
+   - 前后端分离，MCP Client和MCP Server均可以部署到服务器端，用户可以直接使用web浏览器通过后端web服务交互，从而访问LLM和MCP Sever能力和资源  
+   - 支持多用户，用户session隔离，支持并发访问。
+   - 流式响应
+   - 思考过程可视化
+   - 工具调用结果展示和Computer Use截图展示
 
 
 ## 2. 安装步骤
@@ -81,7 +122,7 @@ MAX_TURNS=100
 ### 3.2 Chat 接口服务（Bedrock+MCP）
 - 接口服务可以对外提供给独立API，接入其他chat客户端, 实现服务端MCP能力和客户端的解耦
 - 可以通过http://{ip}:7002/docs#/查看接口文档.
-![alt text](./docs/image_api.png)
+![alt text](./assets/image_api.png)
 
 - 编辑配置文件 `conf/config.json`，该文件预设了要启动哪些 MCP server，可以编辑来添加或者修改 MCP server 参数。
 - 每个 MCP server 的参数规范，可参考如下示例： 
@@ -147,7 +188,7 @@ read the content of rows.txt file
 首先，前往 [Exa](https://exa.ai/) 官网注册账号，并获取 API Key。  
 然后点击【添加 MCP Server】，在弹出菜单中填写如下参数并提交即可：  
 - 方式1，直接添加MCP json 配置文件(与Anthropic官方格式相同)  
-![](docs/add_mcp_server2.png)  
+![](assets/add_mcp_server2.png)  
 ```json
 {
   "mcpServers": {
@@ -162,7 +203,7 @@ read the content of rows.txt file
 }
 ```
 - 方式2，按字段添加 
-![](docs/add_mcp_server.png)  
+![](assets/add_mcp_server.png)  
 
 此时在已有 MCP Server 列表中就可以看到新添加项，勾选即可启动该 MCP Server。
 
@@ -209,7 +250,7 @@ system prompt输入：`when you use mcp browser, If you need to visit search eng
 [最终输出文件示例](docs/tesla_stock_analysis.html)  
 
 - **时序图1:使用Headless Browser 的 MCP Server**
-![alt text](docs/image-seq2.png)  
+![alt text](assets/image-seq2.png)  
 
 ### 5.2 使用MCP Computer Use 操作 EC2 remote desktop
 - 在另外一个目录中安装下载remote-computer-use
@@ -284,12 +325,12 @@ You are an expert research assistant with deep analytical skills. When presented
 ```
 
 - **时序图:使用Computer Use 操作 EC2 Remote Desktop**  
-![alt text](docs/image-seq3.png)
+![alt text](assets/image-seq3.png)
 
 
 ### 5.3.使用Sequential Thinking + Search 做 Deep Research (主要针对Nova/Claude 3.5模型, Claude 3.7不需要)
 - 同时启用 websearch(参考上面的EXA配置)和 [Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)，目前已经预置了Sequential Thinking MCP Server在配置文件中, 启动后可以看到server名称是cot。  
-![alt text](docs/image-serverlist.png)
+![alt text](assets/image-serverlist.png)
 - Sequential Thinking提供通过动态的结构化思维过程和反思，通过工具调用的促使模型按工具输入的要求进行结构化输出推理链条。
 - EXA Search 同时提供关键词和向量检索搜索网络知识，并返回页面的上的详细内容。
 - 测试问题
@@ -300,15 +341,15 @@ You are an expert research assistant with deep analytical skills. When presented
 4. 搜索对比火山引擎，阿里百炼，硅基流动上的对外提供的deepseek r1 满血版的API 性能对比, 包括推理速度，TTFT， 最大context长度等。使用sequential thinking 工具
 ```
 - 效果一览
-![alt text](docs/image_deepresearch_1.png)
-![alt text](docs/image_deepresearch_2.png)
+![alt text](assets/image_deepresearch_1.png)
+![alt text](assets/image_deepresearch_2.png)
 
 - **时序图:使用Search API 的 MCP Server**  
-![alt text](docs/image-seq1.png)  
+![alt text](assets/image-seq1.png)  
 
 ###  5.3. 使用Amazon Knowledge Base
 先在Bedrock console中创建或者使用已有的Bedrock，记下Knowledge Base Id  
-Clone [AWS Knowledge Base Retrieval MCP Server](https://github.com/modelcontextprotocol/servers)到本地，并用[docs/aws-kb-retrieval-server/index.ts)](docs/aws-kb-retrieval-server/index.ts)下的文件替换 `src/aws-kb-retrieval-server/index.ts`里的文件。  
+Clone [AWS Knowledge Base Retrieval MCP Server](https://github.com/modelcontextprotocol/servers)到本地，并用[assets/aws-kb-retrieval-server/index.ts)](assets/aws-kb-retrieval-server/index.ts)下的文件替换 `src/aws-kb-retrieval-server/index.ts`里的文件。  
 > 新文件把knowledgeBaseId通过环境变量指定，无须再通过对话传入。  
 
 在新clone的servers目录下用如下命令打包  
@@ -341,5 +382,7 @@ docker build -t mcp/aws-kb-retrieval:latest -f src/aws-kb-retrieval-server/Docke
 - https://www.aimcp.info/en
 - https://github.com/cline/mcp-marketplace
 - https://github.com/xiehust/sample-mcp-servers
+- https://mcp.composio.dev/
+- https://smithery.ai/
 
 ## 9. [LICENSE](./LICENSE)
