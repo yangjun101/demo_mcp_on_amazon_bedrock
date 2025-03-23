@@ -378,7 +378,7 @@ async def add_mcp_server(
         server_cmd = data.command
         server_script_args = data.args
         server_script_envs = data.env
-        server_desc = data.server_desc
+        server_desc = data.server_desc if data.server_desc else data.server_id
         
         # 处理配置JSON
         if data.config_json:

@@ -212,40 +212,22 @@ read the content of rows.txt file
 
 ## 5 Demo cases
 ### 5.1.使用MCP操作Browser浏览器 
-- 先安装 MCP-browser，注意：如果在本地部署这个demo可以可视化看到浏览器自动运行效果。如果是在服务器上部署，则需要修改成浏览器无头模式。
-找一个目录中下载
-```bash
-git clone https://github.com/xiehust/mcp-browser-automation.git
-cd mcp-browser-automation
-# 使用npm命令编译安装
-npm install
-npm install @playwright/test
-npx playwright install 
-```  
-- 注意服务器上部署，则需要修改成浏览器无头模式，修改mcp-browser-automation/src/toolsHandler.ts中headless:true,
-再运行npm install
-```ts
-browser = await chromium.launch({ headless: true });
-```
-
-- 然后在chatbot界面上添加这个json文件，注意args中的/path_to/路径
+- 在chatbot界面上添加这个json文件,注意：这个server默认启动有头模式的浏览器，因此适合在本地电脑部署的demo中，如果在服务器端部署，请在提示词里加一句`use headless is true to initialize the browser`
 ```json
 { "mcpServers": 
 	{ "mcp-browser": 
-		{ "command": "node", "args": ["/path_to/mcp-browser-automation/dist/index.js"] 
+		{ "command": "npx", "args": ["mcp-browser-use"] 
 		} 
 	} 
 }
 ```
 - test 1, 在chatbot界面中，勾选mcp-browser和local file system 2个server  
-system prompt输入：`when you use mcp browser, If you need to visit search engine, please visit www.bing.com, do not visit google.`  
 输入任务：`帮我整理一份关于小米SU7 ultra的介绍，包括性能，价格，特色功能，图文并茂，并制作成精美的HTML保存到本地目录中`  
 [视频demo](https://mp.weixin.qq.com/s/csg7N8SHoIR2WBgFOjpm6A)  
 [最终输出文件示例](docs/xiaomi_su7_ultra_intro.html)  
   - 如果第一次运行可能需要额外安装一些软件，请跟进tool call 返回的信息提示安装即可  
 
 - test 2, 在chatbot界面中，勾选exa,mcp-browser和local file system 3个server, 会结合搜索引擎，浏览器共同获取信息和图片，形成更丰富的报告
-system prompt输入：`when you use mcp browser, If you need to visit search engine, please visit www.bing.com, do not visit google.`  
 输入任务：`我想要一份特斯拉股票的全面分析，包括：概述：公司概况、关键指标、业绩数据和投资建议财务数据：收入趋势、利润率、资产负债表和现金流分析市场情绪：分析师评级、情绪指标和新闻影响技术分析：价格趋势、技术指标和支撑/阻力水平资产比较：市场份额和与主要竞争对手的财务指标对比价值投资者：内在价值、增长潜力和风险因素投资论点：SWOT 分析和针对不同类型投资者的建议。 并制作成精美的HTML保存到本地目录中。 你可以使用mcp-browser和exa search去获取尽可能丰富的实时数据和图片。`   
 [最终输出文件示例](docs/tesla_stock_analysis.html)  
 
