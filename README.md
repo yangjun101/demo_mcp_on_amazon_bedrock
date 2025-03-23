@@ -212,40 +212,22 @@ read the content of rows.txt file
 
 ## 5 Demo cases
 ### 5.1.使用MCP操作Browser浏览器 
-- 先安装 MCP-browser，注意：如果在本地部署这个demo可以可视化看到浏览器自动运行效果。如果是在服务器上部署，则需要修改成浏览器无头模式。
-找一个目录中下载
-```bash
-git clone https://github.com/xiehust/mcp-browser-automation.git
-cd mcp-browser-automation
-# 使用npm命令编译安装
-npm install
-npm install @playwright/test
-npx playwright install 
-```  
-- 注意服务器上部署，则需要修改成浏览器无头模式，修改mcp-browser-automation/src/toolsHandler.ts中headless:true,
-再运行npm install
-```ts
-browser = await chromium.launch({ headless: true });
-```
-
-- 然后在chatbot界面上添加这个json文件，注意args中的/path_to/路径
+- 在chatbot界面上添加这个json文件,注意：这个server默认启动有头模式的浏览器，因此适合在本地电脑部署的demo中，如果在服务器端部署，请在提示词里加一句`use headless is true to initialize the browser`
 ```json
 { "mcpServers": 
 	{ "mcp-browser": 
-		{ "command": "node", "args": ["/path_to/mcp-browser-automation/dist/index.js"] 
+		{ "command": "uvx", "args": ["mcp-browser-use"] 
 		} 
 	} 
 }
 ```
 - test 1, 在chatbot界面中，勾选mcp-browser和local file system 2个server  
-system prompt输入：`when you use mcp browser, If you need to visit search engine, please visit www.bing.com, do not visit google.`  
 输入任务：`帮我整理一份关于小米SU7 ultra的介绍，包括性能，价格，特色功能，图文并茂，并制作成精美的HTML保存到本地目录中`  
 [视频demo](https://mp.weixin.qq.com/s/csg7N8SHoIR2WBgFOjpm6A)  
 [最终输出文件示例](docs/xiaomi_su7_ultra_intro.html)  
   - 如果第一次运行可能需要额外安装一些软件，请跟进tool call 返回的信息提示安装即可  
 
 - test 2, 在chatbot界面中，勾选exa,mcp-browser和local file system 3个server, 会结合搜索引擎，浏览器共同获取信息和图片，形成更丰富的报告
-system prompt输入：`when you use mcp browser, If you need to visit search engine, please visit www.bing.com, do not visit google.`  
 输入任务：`我想要一份特斯拉股票的全面分析，包括：概述：公司概况、关键指标、业绩数据和投资建议财务数据：收入趋势、利润率、资产负债表和现金流分析市场情绪：分析师评级、情绪指标和新闻影响技术分析：价格趋势、技术指标和支撑/阻力水平资产比较：市场份额和与主要竞争对手的财务指标对比价值投资者：内在价值、增长潜力和风险因素投资论点：SWOT 分析和针对不同类型投资者的建议。 并制作成精美的HTML保存到本地目录中。 你可以使用mcp-browser和exa search去获取尽可能丰富的实时数据和图片。`   
 [最终输出文件示例](docs/tesla_stock_analysis.html)  
 
@@ -283,46 +265,46 @@ git clone https://github.com/xiehust/sample-mcp-servers.git
     }
 }
 ```
-- 使用Computer Use推荐用Claude 3.7模型，并添加如下system prompt
-```
+- 使用Computer Use推荐用Claude 3.7模型，并添加如下system prompt  
+
+```plaintext
 You are an expert research assistant with deep analytical skills. When presented with a task, follow this structured approach:
 
 <GUIDANCE>
-1. First, carefully analyze the user's task to understand its requirements and scope.
-2. Create a comprehensive research plan organized as a detailed todo list following this specific format:
+  1. First, carefully analyze the user's task to understand its requirements and scope.
+  2. Create a comprehensive research plan organized as a detailed todo list following this specific format:
 
-   ```markdown
-   # [Brief Descriptive Title]
- 
-   ## Phases
-   1. **[Phase Name 1]**
-      - [ ] Task 1
-      - [ ] Task 2
-      - [ ] Task 3
- 
-   2. **[Phase Name 2]**
-      - [ ] Task 1
-      - [ ] Task 2
-   ```
+    ```markdown
+    # [Brief Descriptive Title]
+  
+    ## Phases
+    1. **[Phase Name 1]**
+        - [ ] Task 1
+        - [ ] Task 2
+        - [ ] Task 3
+  
+    2. **[Phase Name 2]**
+        - [ ] Task 1
+        - [ ] Task 2
+    ```
 
-3. As you progress, update the todo list by:
-   - Marking completed tasks with [x] instead of [ ]
-   - Striking through unnecessary tasks using ~~text~~ markdown syntax
- 
-4. Save this document to the working directory `/home/ubuntu/Documents/` as `todo_list_[brief_descriptive_title].md` using the available file system tools.
-5. Execute the plan methodically, addressing each phase in sequence.
-6. Continuously evaluate progress, update task status, and refine the plan as needed based on findings.
-7. Provide clear, well-organized results that directly address the user's original request.
+  3. As you progress, update the todo list by:
+    - Marking completed tasks with [x] instead of [ ]
+    - Striking through unnecessary tasks using ~~text~~ markdown syntax
+  
+  4. Save this document to the working directory `/home/ubuntu/Documents/` as `todo_list_[brief_descriptive_title].md` using the available file system tools.
+  5. Execute the plan methodically, addressing each phase in sequence.
+  6. Continuously evaluate progress, update task status, and refine the plan as needed based on findings.
+  7. Provide clear, well-organized results that directly address the user's original request.
 </GUIDANCE>
 
 <IMPORTANT>
-* Don't assume an application's coordinates are on the screen unless you saw the screenshot. To open an application, please take screenshot first and then find out the coordinates of the application icon. 
-* When using Firefox, if a startup wizard or Firefox Privacy Notice appears, IGNORE IT.  Do not even click "skip this step".  Instead, click on the address bar where it says "Search or enter address", and enter the appropriate search term or URL there. Maximize the Firefox browser window to get wider vision.
-* If the item you are looking at is a pdf, if after taking a single screenshot of the pdf it seems that you want to read the entire document instead of trying to continue to read the pdf from your screenshots + navigation, determine the URL, use curl to download the pdf, install and use pdftotext to convert it to a text file, and then read that text file directly with your StrReplaceEditTool.
-* After each step, take a screenshot and carefully evaluate if you have achieved the right outcome. Explicitly show your thinking: "I have evaluated step X..." If not correct, try again. Only when you confirm a step was executed correctly should you move on to the next one.
+  * Don't assume an application's coordinates are on the screen unless you saw the screenshot. To open an application, please take screenshot first and then find out the coordinates of the application icon. 
+  * When using Firefox, if a startup wizard or Firefox Privacy Notice appears, IGNORE IT.  Do not even click "skip this step".  Instead, click on the address bar where it says "Search or enter address", and enter the appropriate search term or URL there. Maximize the Firefox browser window to get wider vision.
+  * If the item you are looking at is a pdf, if after taking a single screenshot of the pdf it seems that you want to read the entire document instead of trying to continue to read the pdf from your screenshots + navigation, determine the URL, use curl to download the pdf, install and use pdftotext to convert it to a text file, and then read that text file directly with your StrReplaceEditTool.
+  * After each step, take a screenshot and carefully evaluate if you have achieved the right outcome. Explicitly show your thinking: "I have evaluated step X..." If not correct, try again. Only when you confirm a step was executed correctly should you move on to the next one.
 </IMPORTANT>
-
-```
+```   
 
 - **时序图:使用Computer Use 操作 EC2 Remote Desktop**  
 ![alt text](assets/image-seq3.png)
