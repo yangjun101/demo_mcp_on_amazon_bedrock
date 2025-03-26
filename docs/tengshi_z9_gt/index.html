@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>腾势Z9 GT - 豪华性能电动SUV</title>
+    <style>
+        /* 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        /* 头部样式 */
+        header {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            text-align: center;
+            padding: 3rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .tagline {
+            font-size: 1.5rem;
+            font-weight: 300;
+            margin-bottom: 2rem;
+        }
+        
+        /* 内容容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* 部分样式 */
+        .section {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            color: #1a2a6c;
+            font-size: 2rem;
+            border-bottom: 2px solid #fdbb2d;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* 亮点特性样式 */
+        .highlights {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-top: 1.5rem;
+        }
+        
+        .highlight-item {
+            flex-basis: calc(33.33% - 1rem);
+            background-color: #f9f9f9;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+        
+        .highlight-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .highlight-item h3 {
+            color: #b21f1f;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* 图片画廊 */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .gallery-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .gallery-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+        
+        .gallery-item:hover img {
+            transform: scale(1.05);
+        }
+        
+        .gallery-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.8rem;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .gallery-item:hover .gallery-caption {
+            transform: translateY(0);
+        }
+        
+        /* 规格表 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+        
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        /* 价格部分 */
+        .price-tag {
+            font-size: 2rem;
+            color: #b21f1f;
+            font-weight: 700;
+            margin: 1rem 0;
+        }
+        
+        .price-note {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .highlight-item {
+                flex-basis: 100%;
+            }
+            
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .tagline {
+                font-size: 1.2rem;
+            }
+        }
+        
+        /* 页脚 */
+        footer {
+            background-color: #1a2a6c;
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <header>
+        <div class="header-content">
+            <h1>腾势Z9 GT</h1>
+            <p class="tagline">豪华科技与极致性能的完美融合</p>
+        </div>
+    </header>
+    
+    <!-- 主要内容 -->
+    <div class="container">
+        <!-- 产品概述 -->
+        <section class="section">
+            <h2 class="section-title">产品概述</h2>
+            <p>腾势Z9 GT是腾势品牌推出的高性能豪华电动SUV，采用了前卫的设计理念和先进的电动技术。作为一款融合了豪华感与运动性能的高端车型，腾势Z9 GT提供了纯电版和插电混动版两种动力选择，满足不同用户的需求。</p>
+            <p>这款车型搭载了比亚迪自主研发的BYD9000定制芯片，配备了先进的智驾系统和豪华内饰，展现出强大的魅力。</p>
+        </section>
+        
+        <!-- 性能参数 -->
+        <section class="section">
+            <h2 class="section-title">性能参数</h2>
+            <p>腾势Z9 GT提供纯电动和插电混动两种动力系统配置，性能表现出色：</p>
+            
+            <table>
+                <tr>
+                    <th>参数</th>
+                    <th>纯电版</th>
+                    <th>插电混动版</th>
+                </tr>
+                <tr>
+                    <td>最大功率</td>
+                    <td>710千瓦</td>
+                    <td>640千瓦</td>
+                </tr>
+                <tr>
+                    <td>最高车速</td>
+                    <td>240 km/h</td>
+                    <td>230 km/h</td>
+                </tr>
+                <tr>
+                    <td>续航里程</td>
+                    <td>纯电四驱续航630km</td>
+                    <td>综合续航1101km (纯电201km)</td>
+                </tr>
+                <tr>
+                    <td>加速性能</td>
+                    <td>0-100km/h 加速约3秒</td>
+                    <td>0-100km/h 加速约3秒</td>
+                </tr>
+                <tr>
+                    <td>电机配置</td>
+                    <td>三电机四驱系统</td>
+                    <td>插混版配2.0T发动机</td>
+                </tr>
+            </table>
+        </section>
+        
+        <!-- 亮点特性 -->
+        <section class="section">
+            <h2 class="section-title">亮点特性</h2>
+            <p>腾势Z9 GT拥有众多创新科技和豪华配置，以下是其主要亮点：</p>
+            
+            <div class="highlights">
+                <div class="highlight-item">
+                    <h3>先进智能驾驶</h3>
+                    <p>搭载BAS 3.0+智驾系统，提供高级辅助驾驶功能，让驾驶更加轻松安全。</p>
+                </div>
+                
+                <div class="highlight-item">
+                    <h3>豪华内饰</h3>
+                    <p>配置丰富，包括多屏联动、无线充电、17.3英寸2.5K中控屏等，营造豪华科技氛围。</p>
+                </div>
+                
+                <div class="highlight-item">
+                    <h3>强劲动力</h3>
+                    <p>三电机四驱系统提供卓越动力输出，实现极速性能体验。</p>
+                </div>
+                
+                <div class="highlight-item">
+                    <h3>高级用料</h3>
+                    <p>采用豪华材质打造内饰，提供舒适座椅和精致细节。</p>
+                </div>
+                
+                <div class="highlight-item">
+                    <h3>创新设计</h3>
+                    <p>前卫的外观设计，猎装造型彰显运动气息与豪华感。</p>
+                </div>
+                
+                <div class="highlight-item">
+                    <h3>双动力选择</h3>
+                    <p>提供纯电版和插电混动版，满足不同用户的使用需求。</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 图片展示 -->
+        <section class="section">
+            <h2 class="section-title">图片展示</h2>
+            <div class="gallery">
+                <div class="gallery-item">
+                    <img src="images/exterior_front.jpg" alt="腾势Z9 GT 前视图">
+                    <div class="gallery-caption">前脸设计展现运动感与科技感</div>
+                </div>
+                
+                <div class="gallery-item">
+                    <img src="images/exterior_side.jpg" alt="腾势Z9 GT 侧视图">
+                    <div class="gallery-caption">侧面线条流畅，彰显豪华气质</div>
+                </div>
+                
+                <div class="gallery-item">
+                    <img src="images/interior_dashboard.jpg" alt="腾势Z9 GT 内饰">
+                    <div class="gallery-caption">豪华内饰配置，科技感十足</div>
+                </div>
+                
+                <div class="gallery-item">
+                    <img src="images/interior_rear.jpg" alt="腾势Z9 GT 后排空间">
+                    <div class="gallery-caption">宽敞舒适的后排空间</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 价格信息 -->
+        <section class="section">
+            <h2 class="section-title">价格信息</h2>
+            <p>腾势Z9 GT作为高端豪华电动SUV，提供多种配置选择：</p>
+            
+            <div class="price-tag">预售价格：约40-50万元人民币</div>
+            
+            <p class="price-note">* 具体价格以官方正式上市发布为准，不同配置价格有所差异。</p>
+            <p class="price-note">* 可能享受国家新能源汽车补贴政策，详情请咨询当地经销商。</p>
+        </section>
+    </div>
+    
+    <!-- 页脚 -->
+    <footer>
+        <p>腾势Z9 GT - 引领电动豪华新风尚</p>
+        <p>© 2025 信息整理 | 本页面仅供参考，具体信息请以官方发布为准</p>
+    </footer>
+</body>
+</html>

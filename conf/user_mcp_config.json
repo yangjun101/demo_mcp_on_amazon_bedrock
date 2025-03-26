@@ -1,0 +1,38 @@
+{
+  "6ba5b6e3": {
+    "cot": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "local_fs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "./docs"
+      ],
+      "env": {},
+      "description": "Local File System I/O",
+      "status": 1
+    },
+    "exa": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "exa-mcp-server"
+      ],
+      "env": {
+        "EXA_API_KEY": "51948b10-8f7b-4ef9-9f6e-2c30a38b3f53"
+      }
+    },
+    "mcp-browser": {
+      "command": "node",
+      "args": [
+        "/Users/yangxjun/work/dev-code/mcp-browser-automation/dist/index.js"
+      ]
+    }
+  }
+}
